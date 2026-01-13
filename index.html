@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk Videochat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginContainer">
+    <h1>Cyber Chat 2077</h1>
+    <input type="text" id="username" placeholder="Name eingeben">
+    <button id="loginBtn">Einloggen</button>
+</div>
+
+<!-- APP -->
+<div id="appContainer" style="display:none;">
+
+    <!-- VIDEO SECTION -->
+    <div id="videoChatSection">
+        <div id="videoControls">
+            <button id="startVideoBtn">Kamera starten</button>
+            <button id="muteBtn">Stumm</button>
+            <button id="cameraBtn">Kamera aus</button>
+        </div>
+        <div id="videoGrid" class="video-grid"></div>
+    </div>
+
+    <!-- CHAT SECTION -->
+    <div id="chatSection">
+        <h2>Chat</h2>
+        <div id="chatBox"></div>
+        <div id="chatInput">
+            <input type="text" id="messageInput" placeholder="Nachricht schreiben...">
+            <button id="sendBtn">Senden</button>
+        </div>
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
