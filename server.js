@@ -30,9 +30,18 @@ io.on("connection", socket => {
     socket.on("disconnect", () => {
         const name = users[socket.id];
         if(name) io.emit("chat message", `👋 ${name} hat den Videochat verlassen`);
+        socket.broadcast.emit("user disconnected", socket.id, name);
         delete users[socket.id];
     });
 
+});
+
+socket.on("video offer", data => {
+    io.to(data.to).emit("video offer", {
+        offer: data.offer,
+        from: socket.id,
+        username: data.username
+    });
 });
 
 server.listen(PORT, () => console.log(`Server läuft auf http://localhost:${PORT}`));

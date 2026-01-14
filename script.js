@@ -109,15 +109,20 @@ socket.on("existing users", users => {
 });
 
 socket.on("new user", id => {
-    createPeer(id, false);
+    if (!localStream) return;
+    createPeer(id, true);
 });
 
 socket.on("video offer", async data => {
     const pc = createPeer(data.from, false);
+    pc.username = data.username;
     await pc.setRemoteDescription(data.offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    socket.emit("video answer", { to: data.from, answer });
+    socket.emit("video answer", { 
+        to: data.from, 
+        answer 
+    });
 });
 
 socket.on("video answer", data => {
@@ -175,7 +180,7 @@ function addRemoteVideo(userId, stream) {
 
     const label = document.createElement("div");
     label.className = "username-label";
-    label.innerText = "Teilnehmer";
+    label.innerText = peers[userId]?.username || "Teilnehmer";
 
     wrapper.appendChild(video);
     wrapper.appendChild(label);
@@ -207,3 +212,31 @@ function monitorSpeaker(stream, wrapper) {
 
     checkVolume();
 }
+
+socket.on("user disconnected", (id, name) => {
+
+    // Peer schließen
+    if (peers[id]) {
+        peers[id].close();
+        delete peers[id];
+    }
+
+    // Video entfernen
+    const videoEl = document.getElementById(`video-${id}`);
+    if (videoEl) videoEl.remove();
+
+    // Chatmeldung
+    if (name) {
+        const div = document.createElement("div");
+        div.className = "chat-message";
+        div.innerText = `👋 ${name} hat den Videochat verlassen`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+});
+
+socket.emit("video offer", {
+    to: userId,
+    offer,
+    username
+});
