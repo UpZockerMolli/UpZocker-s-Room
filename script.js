@@ -15,8 +15,6 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
 
 const videoGrid = document.getElementById("videoGrid");
-const devices = await navigator.mediaDevices.enumerateDevices();
-console.log(devices.filter(d => d.kind === "videoinput"));
 
 // State
 let username = "";
@@ -68,23 +66,17 @@ socket.on("chat message", msg => {
 
 // ===== VIDEO START =====
 startVideoBtn.onclick = async () => {
-    if (localStream) return;
-
     localStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-            deviceId: { exact: devices.find(d => d.kind === "videoinput").deviceId },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 }
-        },
+        video: true,
         audio: true
     });
 
-    localStream.getVideoTracks()[0].onended = () => {
-        console.warn("⚠️ Kamera-Track wurde beendet (Browser/OS)");
-    };
-
-    addLocalVideo(localStream);
+    const hiddenVideo = document.createElement("video");
+    hiddenVideo.srcObject = localStream;
+    hiddenVideo.muted = true;
+    hiddenVideo.autoplay = true;
+    hiddenVideo.style.display = "none";
+    document.body.appendChild(hiddenVideo);
 
     socket.emit("join video", username);
 
@@ -123,6 +115,7 @@ socket.on("new user", id => {
 
 socket.on("video offer", async data => {
     const pc = createPeer(data.from, false);
+    pc.username = data.username;
     await pc.setRemoteDescription(data.offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -196,27 +189,6 @@ function addRemoteVideo(userId, stream) {
     monitorSpeaker(stream, wrapper);
 }
 
-function addLocalVideo(stream) {
-    if (document.getElementById("video-local")) return;
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "video-wrapper local-video";
-    wrapper.id = "video-local";
-
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    video.autoplay = true;
-    video.muted = true; // 🔥 WICHTIG: kein Echo
-
-    const label = document.createElement("div");
-    label.className = "username-label";
-    label.innerText = username + " (du)";
-
-    wrapper.appendChild(video);
-    wrapper.appendChild(label);
-    videoGrid.appendChild(wrapper);
-}
-
 // ===== SPEAKER HIGHLIGHT =====
 function monitorSpeaker(stream, wrapper) {
     const audioCtx = new AudioContext();
@@ -242,10 +214,7 @@ function monitorSpeaker(stream, wrapper) {
 }
 
 socket.on("user disconnected", (id, name) => {
-    removeVideo(id, name);
-});
 
-function removeVideo(id, name) {
     // Peer schließen
     if (peers[id]) {
         peers[id].close();
@@ -264,4 +233,10 @@ function removeVideo(id, name) {
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-}
+});
+
+socket.emit("video offer", {
+    to: userId,
+    offer,
+    username
+});
