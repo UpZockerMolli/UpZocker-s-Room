@@ -21,7 +21,13 @@ io.on("connection", socket => {
 
     socket.on("join video", username => { users[socket.id] = username; });
 
-    socket.on("video offer", data => { io.to(data.to).emit("video offer",{ offer: data.offer, from: socket.id }); });
+    socket.on("video offer", data => {
+    io.to(data.to).emit("video offer", {
+        offer: data.offer,
+        from: socket.id,
+        username: data.username
+    });
+    });
 
     socket.on("video answer", data => { io.to(data.to).emit("video answer",{ answer: data.answer, from: socket.id }); });
 
@@ -29,7 +35,7 @@ io.on("connection", socket => {
 
     socket.on("disconnect", () => {
         const name = users[socket.id];
-        if(name) io.emit("chat message", `👋 ${name} hat den Videochat verlassen`);
+        socket.broadcast.emit("user disconnected", socket.id, name);
         delete users[socket.id];
     });
 
