@@ -109,7 +109,11 @@ socket.on("existing users", users => {
 });
 
 socket.on("new user", id => {
-    if (!localStream) return;
+    if (!localStream) {
+        pendingUsers.push(id);
+        return;
+    }
+
     createPeer(id, true);
 });
 
@@ -136,14 +140,14 @@ socket.on("ice candidate", data => {
 // ===== PEER CREATION =====
 function createPeer(userId, isInitiator) {
     if (peers[userId]) return peers[userId];
-    if (!localStream) return; // ⬅️ WICHTIG
+    if (!localStream) return;
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peers[userId] = pc;
 
-    localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-    });
+    localStream.getTracks().forEach(track =>
+        pc.addTrack(track, localStream)
+    );
 
     pc.ontrack = e => addRemoteVideo(userId, e.streams[0]);
 
@@ -159,7 +163,11 @@ function createPeer(userId, isInitiator) {
     if (isInitiator) {
         pc.createOffer().then(offer => {
             pc.setLocalDescription(offer);
-            socket.emit("video offer", { to: userId, offer });
+            socket.emit("video offer", {
+                to: userId,
+                offer,
+                username
+            });
         });
     }
 
