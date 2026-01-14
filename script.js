@@ -207,6 +207,7 @@ function addRemoteVideo(userId, stream) {
     const video = document.createElement("video");
     video.srcObject = stream;
     video.autoplay = true;
+    openPopout(video, username);
 
     const label = document.createElement("div");
     label.className = "username-label";
@@ -230,6 +231,7 @@ function addLocalVideo(stream) {
     video.srcObject = stream;
     video.autoplay = true;
     video.muted = true; // 🔥 WICHTIG: kein Echo
+    openPopout(video, username + " (du)");
 
     const label = document.createElement("div");
     label.className = "username-label";
@@ -262,4 +264,55 @@ function monitorSpeaker(stream, wrapper) {
     }
 
     checkVolume();
+}
+
+function openPopout(videoElement, labelText) {
+    const pop = window.open(
+        "",
+        "_blank",
+        "width=480,height=360,resizable=yes"
+    );
+
+    pop.document.write(`
+        <html>
+        <head>
+            <title>${labelText}</title>
+            <style>
+                body {
+                    margin: 0;
+                    background: #000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+                video {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+                .label {
+                    position: fixed;
+                    bottom: 10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    color: #00fff7;
+                    font-family: sans-serif;
+                    background: rgba(0,0,0,0.6);
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                }
+            </style>
+        </head>
+        <body>
+            <video autoplay playsinline></video>
+            <div class="label">${labelText}</div>
+        </body>
+        </html>
+    `);
+
+    const popVideo = pop.document.querySelector("video");
+
+    // 🔥 Stream klonen
+    const stream = videoElement.captureStream();
+    popVideo.srcObject = stream;
 }
