@@ -1,13 +1,10 @@
-/* ===== RESET ===== */
-* {
-    box-sizing: border-box;
-}
+/* Reset */
+* { box-sizing: border-box; }
 
-/* ===== BODY ===== */
 body {
     margin: 0;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: radial-gradient(circle at top, #10131c, #05070d 70%);
+    font-family: 'Segoe UI', sans-serif;
+    background: #10131c;
     color: #e5e7eb;
     height: 100vh;
     display: flex;
@@ -15,372 +12,97 @@ body {
     align-items: center;
 }
 
-/* ===== LOGIN ===== */
 #loginContainer {
-    background: rgba(15, 18, 30, 0.85);
-    backdrop-filter: blur(14px);
-    border: 1px solid rgba(0, 245, 255, 0.25);
-    box-shadow: 0 0 25px rgba(0, 245, 255, 0.15);
+    background: rgba(15,18,30,0.85);
     padding: 40px;
     border-radius: 16px;
     width: 320px;
     text-align: center;
-}
-
-#loginContainer h1 {
-    margin-bottom: 20px;
-    color: #00f5ff;
-    letter-spacing: 2px;
+    border: 1px solid rgba(0,245,255,0.25);
 }
 
 #loginContainer input {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
-    background: #05070d;
-    border: 1px solid rgba(255, 47, 220, 0.4);
-    color: #fff;
     border-radius: 8px;
+    border: 1px solid rgba(255,47,220,0.4);
+    background: #05070d;
+    color: #fff;
 }
 
 #loginContainer button {
     width: 100%;
     padding: 12px;
+    border-radius: 10px;
     background: linear-gradient(135deg, #00f5ff, #ff2fdc);
     border: none;
-    color: black;
     font-weight: bold;
-    border-radius: 10px;
-    cursor: pointer;
-    text-transform: uppercase;
-}
-
-/* ===== APP LAYOUT ===== */
-#appContainer {
-    display: flex;
-    gap: 18px;
-    width: 96%;
-    height: 92%;
-}
-
-/* ===== VIDEO SECTION ===== */
-#videoChatSection {
-    flex: 2;
-    background: rgba(10, 14, 25, 0.7);
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
-    padding: 16px;
-    border: 1px solid rgba(0, 245, 255, 0.2);
-}
-
-#videoChatSection h2 {
-    margin-top: 0;
-    color: #00f5ff;
-    letter-spacing: 1px;
-}
-
-/* ===== CONTROLS ===== */
-#videoControls {
-    margin-bottom: 10px;
-}
-
-#videoControls button {
-    background: transparent;
-    color: #00f5ff;
-    border: 1px solid rgba(0, 245, 255, 0.4);
-    padding: 8px 14px;
-    margin-right: 6px;
-    border-radius: 8px;
     cursor: pointer;
 }
 
-#videoControls button:hover {
-    background: rgba(0, 245, 255, 0.15);
-}
+#appContainer { display: flex; gap: 18px; width: 96%; height: 92%; }
 
-/* ===== VIDEO GRID ===== */
-.video-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-}
+#videoGrid { flex: 3; display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap:16px; padding:16px; }
 
-/* ===== VIDEO CARD ===== */
 .video-wrapper {
     position: relative;
     background: #02040a;
     border-radius: 14px;
     overflow: hidden;
-    border: 1px solid rgba(255, 47, 220, 0.25);
+    border: 1px solid rgba(255,47,220,0.25);
 }
 
-.video-wrapper video {
-    width: 100%;
-    height: auto;
-}
+.video-wrapper video { width: 100%; height: auto; }
 
-/* ===== USERNAME ===== */
 .username-label {
     position: absolute;
-    bottom: 0;
-    width: 100%;
-    padding: 6px 10px;
-    background: linear-gradient(90deg, rgba(0,0,0,0.85), rgba(0,0,0,0.4));
-    font-size: 0.85em;
-    color: #00f5ff;
-    text-shadow: 0 0 6px rgba(0, 245, 255, 0.8);
+    bottom:0;
+    width:100%;
+    padding:6px 10px;
+    background: rgba(0,0,0,0.6);
+    color:#00f5ff;
+    font-size:0.85em;
 }
 
-/* ===== ACTIVE SPEAKER ===== */
-.video-wrapper.active-speaker {
-    box-shadow:
-        0 0 12px #00f5ff,
-        0 0 24px rgba(0, 245, 255, 0.8);
-    transform: scale(1.04);
-    border-color: #00f5ff;
-}
+.video-wrapper.active-speaker { box-shadow: 0 0 20px #00f5ff; }
 
-/* ===== CHAT ===== */
 #chatSection {
-    flex: 1;
-    background: rgba(15, 18, 30, 0.8);
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
-    padding: 12px;
-    border: 1px solid rgba(255, 47, 220, 0.3);
-    display: flex;
-    flex-direction: column;
+    flex:1;
+    background: rgba(15,18,30,0.8);
+    border-radius:18px;
+    padding:12px;
+    border:1px solid rgba(255,47,220,0.3);
+    display:flex;
+    flex-direction:column;
 }
 
-#chatSection h2 {
-    color: #ff2fdc;
-    margin-top: 0;
-}
-
-/* ===== CHAT BOX ===== */
 #chatBox {
-    flex: 1;
-    background: #02040a;
-    border-radius: 12px;
-    padding: 10px;
-    overflow-y: auto;
-    border: 1px solid rgba(0, 245, 255, 0.15);
+    flex:1;
+    background:#02040a;
+    border-radius:12px;
+    padding:10px;
+    overflow-y:auto;
+    border:1px solid rgba(0,245,255,0.15);
 }
 
-/* ===== MESSAGES ===== */
-.chat-message {
-    margin-bottom: 6px;
-    padding: 6px 8px;
-    border-left: 3px solid #00f5ff;
-    background: rgba(0, 245, 255, 0.05);
-    font-size: 0.9em;
-}
+.chat-message { margin-bottom:6px; padding:6px 8px; border-left:3px solid #00f5ff; font-family:"Courier New", monospace; font-size:0.9em; }
 
-/* ===== INPUT ===== */
 #chatSection input {
-    margin-top: 8px;
-    padding: 10px;
-    background: #05070d;
-    border: 1px solid rgba(255, 47, 220, 0.4);
-    border-radius: 8px;
-    color: white;
+    margin-top:8px;
+    padding:10px;
+    background:#05070d;
+    border:1px solid rgba(255,47,220,0.4);
+    border-radius:8px;
+    color:white;
 }
 
 #chatSection button {
-    margin-top: 6px;
-    padding: 10px;
-    background: linear-gradient(135deg, #ff2fdc, #00f5ff);
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-/* ===== HUD ECKEN ===== */
-.video-wrapper::before,
-.video-wrapper::after {
-    content: "";
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    border: 2px solid #00f5ff;
-    opacity: 0.7;
-}
-
-.video-wrapper::before {
-    top: 6px;
-    left: 6px;
-    border-right: none;
-    border-bottom: none;
-}
-
-.video-wrapper::after {
-    bottom: 6px;
-    right: 6px;
-    border-left: none;
-    border-top: none;
-}
-
-/* ===== SCANLINES ===== */
-.video-wrapper::after {
-    background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.03),
-        rgba(255,255,255,0.03) 1px,
-        transparent 2px,
-        transparent 4px
-    );
-    pointer-events: none;
-}
-
-/* ===== NEON HOVER ===== */
-.video-wrapper:hover {
-    box-shadow:
-        0 0 10px rgba(255, 47, 220, 0.7),
-        0 0 20px rgba(0, 245, 255, 0.8);
-    transform: scale(1.05);
-}
-
-@keyframes pulseGlow {
-    0% {
-        box-shadow: 0 0 10px #00f5ff;
-    }
-    50% {
-        box-shadow:
-            0 0 18px #00f5ff,
-            0 0 32px rgba(0, 245, 255, 0.9);
-    }
-    100% {
-        box-shadow: 0 0 10px #00f5ff;
-    }
-}
-
-.video-wrapper.active-speaker {
-    animation: pulseGlow 1.2s infinite;
-}
-
-/* ===== SYSTEM MESSAGE ===== */
-.chat-message {
-    position: relative;
-}
-
-.chat-message::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 245, 255, 0.08);
-    animation: glitchFlash 0.15s ease-out;
-}
-
-@keyframes glitchFlash {
-    0% { opacity: 1; transform: translateX(-2px); }
-    50% { opacity: 0.4; transform: translateX(2px); }
-    100% { opacity: 0; transform: translateX(0); }
-}
-
-button {
-    position: relative;
-    overflow: hidden;
-}
-
-button::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        120deg,
-        transparent,
-        rgba(255,255,255,0.4),
-        transparent
-    );
-}
-
-button:hover::after {
-    left: 100%;
-    transition: 0.5s;
-}
-
-/* 🎤 MICRO ICON */
-.video-wrapper::after {
-    content: "🎤";
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 1.2em;
-    opacity: 0;
-    transition: opacity 0.2s;
-    filter: drop-shadow(0 0 6px #00f5ff);
-}
-
-.video-wrapper.active-speaker::after {
-    opacity: 1;
-}
-
-/* 🔊 AUDIO WAVE */
-.video-wrapper.active-speaker::before {
-    animation: audioWave 1s infinite;
-}
-
-@keyframes audioWave {
-    0% { opacity: 0.4; }
-    50% { opacity: 1; }
-    100% { opacity: 0.4; }
-}
-
-/* 🖥 FULLSCREEN MODE */
-.video-wrapper.fullscreen {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: black;
-    border-radius: 0;
-}
-
-.video-wrapper.fullscreen video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* 🧠 SYSTEM LOG LOOK */
-.chat-message {
-    font-family: "Courier New", monospace;
-}
-
-.chat-message::before {
-    content: ">> ";
-    color: #00f5ff;
-}
-
-/* 🧬 SESSION HUD */
-#appContainer::after {
-    content: "SESSION ID: 77-CP-" attr(data-session);
-    position: fixed;
-    bottom: 12px;
-    left: 20px;
-    font-size: 0.75em;
-    color: #00f5ff;
-    opacity: 0.7;
-    font-family: "Courier New", monospace;
-}
-
-/* 🌌 GLOBAL SCANLINES */
-body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.02),
-        rgba(255,255,255,0.02) 1px,
-        transparent 2px,
-        transparent 4px
-    );
-    pointer-events: none;
+    margin-top:6px;
+    padding:10px;
+    background: linear-gradient(135deg,#ff2fdc,#00f5ff);
+    border:none;
+    border-radius:10px;
+    font-weight:bold;
+    cursor:pointer;
 }
