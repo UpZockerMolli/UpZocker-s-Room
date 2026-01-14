@@ -115,7 +115,6 @@ socket.on("new user", id => {
 
 socket.on("video offer", async data => {
     const pc = createPeer(data.from, false);
-    pc.username = data.username;
     await pc.setRemoteDescription(data.offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
