@@ -66,19 +66,22 @@ socket.on("chat message", msg => {
 
 // ===== VIDEO START =====
 startVideoBtn.onclick = async () => {
+    if (localStream) return;
+
     localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+        },
         audio: true
     });
 
-    addLocalVideo(localStream);
+    localStream.getVideoTracks()[0].onended = () => {
+        console.warn("⚠️ Kamera-Track wurde beendet (Browser/OS)");
+    };
 
-    const hiddenVideo = document.createElement("video");
-    hiddenVideo.srcObject = localStream;
-    hiddenVideo.muted = true;
-    hiddenVideo.autoplay = true;
-    hiddenVideo.style.display = "none";
-    document.body.appendChild(hiddenVideo);
+    addLocalVideo(localStream);
 
     socket.emit("join video", username);
 
