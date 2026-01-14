@@ -22,7 +22,6 @@ let localStream = null;
 let peers = {};
 let audioEnabled = true;
 let videoEnabled = true;
-let pendingUsers = [];
 
 // ✅ STUN + TURN Server
 const ICE_SERVERS = {
@@ -79,9 +78,6 @@ startVideoBtn.onclick = async () => {
     document.body.appendChild(hiddenVideo);
 
     socket.emit("join video", username);
-
-    pendingUsers.forEach(id => createPeer(id, true));
-    pendingUsers = [];
 };
 
 // ===== MUTE / CAMERA =====
@@ -101,32 +97,19 @@ cameraBtn.onclick = () => {
 
 // ===== WEBRTC =====
 socket.on("existing users", users => {
-    if (!localStream) {
-        pendingUsers = users;
-        return;
-    }
     users.forEach(id => createPeer(id, true));
 });
 
 socket.on("new user", id => {
-    if (!localStream) {
-        pendingUsers.push(id);
-        return;
-    }
-
-    createPeer(id, true);
+    createPeer(id, false);
 });
 
 socket.on("video offer", async data => {
     const pc = createPeer(data.from, false);
-    pc.username = data.username;
     await pc.setRemoteDescription(data.offer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    socket.emit("video answer", { 
-        to: data.from, 
-        answer 
-    });
+    socket.emit("video answer", { to: data.from, answer });
 });
 
 socket.on("video answer", data => {
@@ -140,34 +123,24 @@ socket.on("ice candidate", data => {
 // ===== PEER CREATION =====
 function createPeer(userId, isInitiator) {
     if (peers[userId]) return peers[userId];
-    if (!localStream) return;
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peers[userId] = pc;
 
-    localStream.getTracks().forEach(track =>
-        pc.addTrack(track, localStream)
-    );
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
     pc.ontrack = e => addRemoteVideo(userId, e.streams[0]);
 
     pc.onicecandidate = e => {
         if (e.candidate) {
-            socket.emit("ice candidate", {
-                to: userId,
-                candidate: e.candidate
-            });
+            socket.emit("ice candidate", { to: userId, candidate: e.candidate });
         }
     };
 
     if (isInitiator) {
         pc.createOffer().then(offer => {
             pc.setLocalDescription(offer);
-            socket.emit("video offer", {
-                to: userId,
-                offer,
-                username
-            });
+            socket.emit("video offer", { to: userId, offer });
         });
     }
 
@@ -188,7 +161,7 @@ function addRemoteVideo(userId, stream) {
 
     const label = document.createElement("div");
     label.className = "username-label";
-    label.innerText = peers[userId]?.username || "Teilnehmer";
+    label.innerText = "Teilnehmer";
 
     wrapper.appendChild(video);
     wrapper.appendChild(label);
@@ -220,31 +193,3 @@ function monitorSpeaker(stream, wrapper) {
 
     checkVolume();
 }
-
-socket.on("user disconnected", (id, name) => {
-
-    // Peer schließen
-    if (peers[id]) {
-        peers[id].close();
-        delete peers[id];
-    }
-
-    // Video entfernen
-    const videoEl = document.getElementById(`video-${id}`);
-    if (videoEl) videoEl.remove();
-
-    // Chatmeldung
-    if (name) {
-        const div = document.createElement("div");
-        div.className = "chat-message";
-        div.innerText = `👋 ${name} hat den Videochat verlassen`;
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-});
-
-socket.emit("video offer", {
-    to: userId,
-    offer,
-    username
-});
