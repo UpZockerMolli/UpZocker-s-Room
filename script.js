@@ -71,6 +71,8 @@ startVideoBtn.onclick = async () => {
         audio: true
     });
 
+    addLocalVideo(localStream);
+
     const hiddenVideo = document.createElement("video");
     hiddenVideo.srcObject = localStream;
     hiddenVideo.muted = true;
@@ -186,6 +188,27 @@ function addRemoteVideo(userId, stream) {
     videoGrid.appendChild(wrapper);
 
     monitorSpeaker(stream, wrapper);
+}
+
+function addLocalVideo(stream) {
+    if (document.getElementById("video-local")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "video-wrapper local-video";
+    wrapper.id = "video-local";
+
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.muted = true; // 🔥 WICHTIG: kein Echo
+
+    const label = document.createElement("div");
+    label.className = "username-label";
+    label.innerText = username + " (du)";
+
+    wrapper.appendChild(video);
+    wrapper.appendChild(label);
+    videoGrid.appendChild(wrapper);
 }
 
 // ===== SPEAKER HIGHLIGHT =====
