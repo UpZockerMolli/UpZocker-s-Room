@@ -22,6 +22,7 @@ let localStream = null;
 let peers = {};
 let audioEnabled = true;
 let videoEnabled = true;
+let pendingUsers = [];
 
 // ✅ STUN + TURN Server
 const ICE_SERVERS = {
@@ -78,6 +79,9 @@ startVideoBtn.onclick = async () => {
     document.body.appendChild(hiddenVideo);
 
     socket.emit("join video", username);
+
+    pendingUsers.forEach(id => createPeer(id, true));
+    pendingUsers = [];
 };
 
 // ===== MUTE / CAMERA =====
@@ -97,6 +101,10 @@ cameraBtn.onclick = () => {
 
 // ===== WEBRTC =====
 socket.on("existing users", users => {
+    if (!localStream) {
+        pendingUsers = users;
+        return;
+    }
     users.forEach(id => createPeer(id, true));
 });
 
@@ -123,17 +131,23 @@ socket.on("ice candidate", data => {
 // ===== PEER CREATION =====
 function createPeer(userId, isInitiator) {
     if (peers[userId]) return peers[userId];
+    if (!localStream) return; // ⬅️ WICHTIG
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peers[userId] = pc;
 
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+    });
 
     pc.ontrack = e => addRemoteVideo(userId, e.streams[0]);
 
     pc.onicecandidate = e => {
         if (e.candidate) {
-            socket.emit("ice candidate", { to: userId, candidate: e.candidate });
+            socket.emit("ice candidate", {
+                to: userId,
+                candidate: e.candidate
+            });
         }
     };
 
