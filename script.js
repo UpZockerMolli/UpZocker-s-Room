@@ -20,12 +20,19 @@ const videoGrid = document.getElementById("videoGrid");
 let username = "";
 let localStream = null;
 let peers = {};
-let usernames = {};
 let audioEnabled = true;
 let videoEnabled = true;
 
+// ✅ STUN + TURN Server
 const ICE_SERVERS = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+            urls: "turn:numb.viagenie.ca",
+            credential: "muazkh",
+            username: "webrtc@live.com"
+        }
+    ]
 };
 
 // ===== LOGIN =====
@@ -36,7 +43,7 @@ loginBtn.onclick = () => {
     loginContainer.style.display = "none";
     appContainer.style.display = "flex";
 
-    // ✅ Beitrittsmeldung im Chat
+    socket.emit("join", username);
     socket.emit("chat message", `👋 ${username} ist dem Videochat beigetreten`);
 };
 
@@ -63,7 +70,6 @@ startVideoBtn.onclick = async () => {
         audio: true
     });
 
-    // Eigenes Video versteckt (aber aktiv)
     const hiddenVideo = document.createElement("video");
     hiddenVideo.srcObject = localStream;
     hiddenVideo.muted = true;
@@ -88,12 +94,6 @@ cameraBtn.onclick = () => {
     localStream.getVideoTracks().forEach(t => t.enabled = videoEnabled);
     cameraBtn.textContent = videoEnabled ? "Kamera aus" : "Kamera an";
 };
-
-// ===== USERNAMES =====
-socket.on("usernames", data => {
-    usernames = data;
-    updateLabels();
-});
 
 // ===== WEBRTC =====
 socket.on("existing users", users => {
@@ -161,23 +161,16 @@ function addRemoteVideo(userId, stream) {
 
     const label = document.createElement("div");
     label.className = "username-label";
-    label.innerText = usernames[userId] || "Teilnehmer";
+    label.innerText = "Teilnehmer";
 
     wrapper.appendChild(video);
     wrapper.appendChild(label);
     videoGrid.appendChild(wrapper);
 
-    // 🔊 Aktiven Sprecher überwachen
     monitorSpeaker(stream, wrapper);
 }
 
-function updateLabels() {
-    Object.keys(usernames).forEach(id => {
-        const label = document.querySelector(`#video-${id} .username-label`);
-        if (label) label.innerText = usernames[id];
-    });
-}
-
+// ===== SPEAKER HIGHLIGHT =====
 function monitorSpeaker(stream, wrapper) {
     const audioCtx = new AudioContext();
     const source = audioCtx.createMediaStreamSource(stream);
@@ -190,13 +183,10 @@ function monitorSpeaker(stream, wrapper) {
 
     function checkVolume() {
         analyser.getByteFrequencyData(data);
-        const volume = data.reduce((a, b) => a + b, 0) / data.length;
+        const volume = data.reduce((a,b)=>a+b,0)/data.length;
 
-        if (volume > 30) {
-            wrapper.classList.add("active-speaker");
-        } else {
-            wrapper.classList.remove("active-speaker");
-        }
+        if (volume>30) wrapper.classList.add("active-speaker");
+        else wrapper.classList.remove("active-speaker");
 
         requestAnimationFrame(checkVolume);
     }

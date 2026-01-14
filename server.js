@@ -28,14 +28,11 @@ io.on("connection", socket => {
     socket.on("ice candidate", data => { io.to(data.to).emit("ice candidate",{ candidate: data.candidate, from: socket.id }); });
 
     socket.on("disconnect", () => {
-    const name = users[socket.id];
-
-    if (name) {
-        io.emit("chat message", `👋 ${name} hat den Videochat verlassen`);
+        const name = users[socket.id];
+        if(name) io.emit("chat message", `👋 ${name} hat den Videochat verlassen`);
         delete users[socket.id];
-        io.emit("usernames", users);
-    }
+    });
+
 });
 
 server.listen(PORT, () => console.log(`Server läuft auf http://localhost:${PORT}`));
-});

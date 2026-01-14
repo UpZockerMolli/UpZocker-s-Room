@@ -1,5 +1,5 @@
 {
-  "name": "cyberpunk-videochat",
+  "name": "upzockers-room",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -8,19 +8,5 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2"
-  },
-  "description": "",
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/UpZockerMolli/UpZocker-s-Room.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/UpZockerMolli/UpZocker-s-Room/issues"
-  },
-  "homepage": "https://github.com/UpZockerMolli/UpZocker-s-Room#readme"
+  }
 }
