@@ -15,6 +15,8 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
 
 const videoGrid = document.getElementById("videoGrid");
+const devices = await navigator.mediaDevices.enumerateDevices();
+console.log(devices.filter(d => d.kind === "videoinput"));
 
 // State
 let username = "";
@@ -70,6 +72,7 @@ startVideoBtn.onclick = async () => {
 
     localStream = await navigator.mediaDevices.getUserMedia({
         video: {
+            deviceId: { exact: devices.find(d => d.kind === "videoinput").deviceId },
             width: { ideal: 1280 },
             height: { ideal: 720 },
             frameRate: { ideal: 30 }
@@ -239,7 +242,10 @@ function monitorSpeaker(stream, wrapper) {
 }
 
 socket.on("user disconnected", (id, name) => {
+    removeVideo(id, name);
+});
 
+function removeVideo(id, name) {
     // Peer schließen
     if (peers[id]) {
         peers[id].close();
@@ -258,10 +264,4 @@ socket.on("user disconnected", (id, name) => {
         chatBox.appendChild(div);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-});
-
-socket.emit("video offer", {
-    to: userId,
-    offer,
-    username
-});
+}
