@@ -5,7 +5,8 @@ const loginBtn = document.getElementById("loginBtn");
 const loginContainer = document.getElementById("loginContainer");
 const appContainer = document.getElementById("appContainer");
 const usernameInput = document.getElementById("username");
-
+const params = new URLSearchParams(window.location.search);
+const room = params.get("room") || "default";
 const startVideoBtn = document.getElementById("startVideoBtn");
 const muteBtn = document.getElementById("muteBtn");
 const cameraBtn = document.getElementById("cameraBtn");
@@ -44,7 +45,7 @@ loginBtn.onclick = () => {
     loginContainer.style.display = "none";
     appContainer.style.display = "flex";
 
-    socket.emit("join", username);
+    socket.emit("join", { username, room });
     socket.emit("chat message", `👋 ${username} ist dem Videochat beigetreten`);
 };
 

@@ -14,20 +14,22 @@ const users = {};
 io.on("connection", socket => {
 
     // ===== JOIN =====
-    socket.on("join", username => {
-        users[socket.id] = username;
+    socket.on("join", ({ username, room }) => {
+    socket.join(room);
 
-        // vorhandene Nutzer senden
-        const others = Object.keys(users).filter(id => id !== socket.id);
-        socket.emit("existing users", others);
+    socket.username = username;
+    socket.room = room;
 
-        // neuen Nutzer ankündigen
-        socket.broadcast.emit("new user", socket.id);
-    });
+    const clients = Array.from(io.sockets.adapter.rooms.get(room) || []);
+    const others = clients.filter(id => id !== socket.id);
+
+    socket.emit("existing users", others);
+    socket.to(room).emit("new user", socket.id, username);
+});
 
     // ===== CHAT =====
     socket.on("chat message", msg => {
-        io.emit("chat message", msg);
+        io.to(socket.room).emit("chat message", msg);
     });
 
     // ===== VIDEO OFFER =====
@@ -59,7 +61,7 @@ io.on("connection", socket => {
     socket.on("disconnect", () => {
         const name = users[socket.id];
 
-        socket.broadcast.emit("user disconnected", socket.id, name);
+        socket.to(socket.room).emit("user disconnected", socket.id, socket.username);
         delete users[socket.id];
     });
 
