@@ -1,43 +1,69 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UpZocker´s Room</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>UpZocker´s Room</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="loginContainer">
-    <h1>UpZocker´s Room</h1>
-    <input type="text" id="username" placeholder="Name eingeben">
-    <button id="loginBtn">Einloggen</button>
+    <img src="favicon.png" class="login-logo">
+    <h2 style="margin-bottom: 20px; color: #00f5ff;">UpZocker's Room</h2>
+    <input id="usernameInput" type="text" placeholder="Dein Name..." />
+    <input id="passwordInput" type="password" placeholder="Passwort..." />
+    <button id="loginBtn" type="button" style="width: 300px;">Anmelden</button>
+    <div id="loginError" id="loginError"></div>
 </div>
 
-<!-- APP -->
 <div id="appContainer" style="display:none;">
-
-    <!-- VIDEO SECTION -->
-    <div id="videoChatSection">
-        <div id="videoControls">
-            <button id="startVideoBtn">Kamera starten</button>
-            <button id="muteBtn">Stumm</button>
-            <button id="cameraBtn">Kamera aus</button>
+    <div id="sidebar">
+        <div class="sidebar-logo-wrap">
+            <img src="favicon.png">
         </div>
-        <div id="videoGrid" class="video-grid"></div>
+        <h3>STATION</h3>
+        <div id="roomTitle">Lobby</div>
+        <hr class="divider">
+        <div class="sidebar-label">ONLINE:</div>
+        <div id="userList"></div>
+        <hr class="divider">
+        <button id="createRoomBtn"><i class="fas fa-plus"></i> Neuer Raum</button>
+        <div class="sidebar-label">RÄUME:</div>
+        <div id="roomList"></div>
     </div>
 
-    <!-- CHAT SECTION -->
+    <div id="mainSection">
+        <div id="videoChatSection">
+            <div id="videoPlaceholder">
+                <button id="initVideoBtn" class="big-start-btn">Kamera-Uplink starten</button>
+            </div>
+            <div id="videoGrid" style="display:none;"></div>
+            <div id="videoControls" style="display:none;">
+                <button id="muteBtn" class="ctrl"><i class="fas fa-microphone"></i></button>
+                <button id="cameraBtn" class="ctrl"><i class="fas fa-video"></i></button>
+                <button id="shareBtn" class="ctrl"><i class="fas fa-desktop"></i></button>
+                <button id="expandBtn" class="ctrl"><i class="fas fa-expand"></i></button>
+                <button id="popoutBtn" class="ctrl" title="Auto-Rotations Popout"><i class="fas fa-sync-alt"></i></button>
+            </div>
+        </div>
+    </div>
+
     <div id="chatSection">
-        <h2>Chat</h2>
         <div id="chatBox"></div>
-        <div id="chatInput">
-            <input type="text" id="messageInput" placeholder="Nachricht schreiben...">
+        <div id="emojiPicker" class="emoji-picker" style="display:none;">
+            <span>🎮</span><span>🕹️</span><span>🔥</span><span>👑</span><span>🚀</span>
+            <span>😂</span><span>😎</span><span>👍</span><span>❤️</span><span>💀</span>
+        </div>
+        <div id="chatInputArea">
+            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                <button id="emojiBtn" type="button">😊</button>
+                <input type="text" id="messageInput" placeholder="Nachricht...">
+            </div>
             <button id="sendBtn">Senden</button>
         </div>
     </div>
-
 </div>
 
 <script src="/socket.io/socket.io.js"></script>

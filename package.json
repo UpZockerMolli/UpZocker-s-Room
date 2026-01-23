@@ -1,6 +1,7 @@
 {
   "name": "upzockers-room",
   "version": "1.0.0",
+  "description": "High-End Video Chat Station mit WebRTC und Socket.io",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -8,5 +9,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2"
-  }
+  },
+  "author": "UpZocker",
+  "license": "ISC"
 }

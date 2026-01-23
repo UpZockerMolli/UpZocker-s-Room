@@ -1,72 +1,64 @@
 const express = require("express");
-const app = express();
 const http = require("http");
-const server = http.createServer(app);
 const { Server } = require("socket.io");
+const app = express();
+const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = process.env.PORT || 3000;
+const STATION_PASSWORD = "UpZocker2026";
+let onlineUsers = {}; 
+let activeRooms = ["Lobby"];
 
 app.use(express.static(__dirname));
 
-const users = {};
-
 io.on("connection", socket => {
-
-    // ===== JOIN =====
-    socket.on("join", ({ username, room }) => {
-    socket.join(room);
-
-    socket.username = username;
-    socket.room = room;
-
-    const clients = Array.from(io.sockets.adapter.rooms.get(room) || []);
-    const others = clients.filter(id => id !== socket.id);
-
-    socket.emit("existing users", others);
-    socket.to(room).emit("new user", socket.id, username);
-});
-
-    // ===== CHAT =====
-    socket.on("chat message", msg => {
-        io.to(socket.room).emit("chat message", msg);
+    socket.on("login", ({ username, password }) => {
+        if (password !== STATION_PASSWORD) {
+            socket.emit("login-error", "Falsches Passwort!");
+            return;
+        }
+        socket.username = username; socket.authenticated = true;
+        onlineUsers[socket.id] = { username, room: "Lobby" };
+        socket.emit("login-success");
+        io.emit("update-room-list", activeRooms);
     });
 
-    // ===== VIDEO OFFER =====
-    socket.on("video offer", data => {
-        io.to(data.to).emit("video offer", {
-            offer: data.offer,
-            from: socket.id,
-            username: data.username
-        });
+    socket.on("join", ({ room }) => {
+        if (!socket.authenticated) return;
+        Array.from(socket.rooms).forEach(r => { if(r !== socket.id) socket.leave(r); });
+        socket.join(room); socket.room = room;
+        if (onlineUsers[socket.id]) onlineUsers[socket.id].room = room;
+        io.to(room).emit("sys-message", `${socket.username} ist da.`);
+        io.emit("update-user-list", Object.values(onlineUsers));
     });
 
-    // ===== VIDEO ANSWER =====
-    socket.on("video answer", data => {
-        io.to(data.to).emit("video answer", {
-            answer: data.answer,
-            from: socket.id
-        });
+    socket.on("create-room", (name) => {
+        if (!activeRooms.includes(name)) { activeRooms.push(name); io.emit("update-room-list", activeRooms); }
     });
 
-    // ===== ICE =====
-    socket.on("ice candidate", data => {
-        io.to(data.to).emit("ice candidate", {
-            candidate: data.candidate,
-            from: socket.id
-        });
+    socket.on("delete-room", (name) => {
+        if (name !== "Lobby") {
+            activeRooms = activeRooms.filter(r => r !== name);
+            io.emit("force-lobby-return", name);
+            for (let id in onlineUsers) { if (onlineUsers[id].room === name) onlineUsers[id].room = "Lobby"; }
+            io.emit("update-room-list", activeRooms);
+            io.emit("update-user-list", Object.values(onlineUsers));
+        }
     });
 
-    // ===== DISCONNECT =====
+    socket.on("ready-for-video", () => { if (socket.authenticated) socket.to(socket.room).emit("user-ready", socket.id); });
+    socket.on("video-offer", (d) => io.to(d.to).emit("video-offer", { offer: d.offer, from: socket.id }));
+    socket.on("video-answer", (d) => io.to(d.to).emit("video-answer", { answer: d.answer, from: socket.id }));
+    socket.on("new-ice-candidate", (d) => io.to(d.to).emit("new-ice-candidate", { candidate: d.candidate, from: socket.id }));
+    socket.on("chat-message", (text) => { if (socket.authenticated) io.to(socket.room).emit("chat-message", { text, user: socket.username }); });
+
     socket.on("disconnect", () => {
-        const name = users[socket.id];
-
-        socket.to(socket.room).emit("user disconnected", socket.id, socket.username);
-        delete users[socket.id];
+        if (socket.username) {
+            delete onlineUsers[socket.id]; io.emit("update-user-list", Object.values(onlineUsers));
+            socket.to(socket.room).emit("user-disconnected", socket.id);
+        }
     });
-
 });
 
-server.listen(PORT, () => {
-    console.log("Server läuft auf Port", PORT);
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`UpZocker Station auf Port ${PORT}`));
