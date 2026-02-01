@@ -3,62 +3,69 @@ const http = require("http");
 const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 const STATION_PASSWORD = "UpZocker2026";
-let onlineUsers = {}; 
-let activeRooms = ["Lobby"];
+let users = {}, rooms = ["Lobby"];
 
 app.use(express.static(__dirname));
 
 io.on("connection", socket => {
     socket.on("login", ({ username, password }) => {
-        if (password !== STATION_PASSWORD) {
-            socket.emit("login-error", "Falsches Passwort!");
-            return;
-        }
+        if (password !== STATION_PASSWORD) return socket.emit("login-error", "Falsches Passwort!");
         socket.username = username; socket.authenticated = true;
-        onlineUsers[socket.id] = { username, room: "Lobby" };
+        users[socket.id] = { username, room: "Lobby" };
         socket.emit("login-success");
-        io.emit("update-room-list", activeRooms);
+        io.emit("notify", `${username} ist online!`);
+        updateAll();
     });
 
     socket.on("join", ({ room }) => {
         if (!socket.authenticated) return;
-        Array.from(socket.rooms).forEach(r => { if(r !== socket.id) socket.leave(r); });
-        socket.join(room); socket.room = room;
-        if (onlineUsers[socket.id]) onlineUsers[socket.id].room = room;
-        io.to(room).emit("sys-message", `${socket.username} ist da.`);
-        io.emit("update-user-list", Object.values(onlineUsers));
+        socket.leave(socket.room); socket.join(room);
+        socket.room = room; users[socket.id].room = room;
+        updateAll();
     });
 
-    socket.on("create-room", (name) => {
-        if (!activeRooms.includes(name)) { activeRooms.push(name); io.emit("update-room-list", activeRooms); }
-    });
-
-    socket.on("delete-room", (name) => {
-        if (name !== "Lobby") {
-            activeRooms = activeRooms.filter(r => r !== name);
-            io.emit("force-lobby-return", name);
-            for (let id in onlineUsers) { if (onlineUsers[id].room === name) onlineUsers[id].room = "Lobby"; }
-            io.emit("update-room-list", activeRooms);
-            io.emit("update-user-list", Object.values(onlineUsers));
+    socket.on("create-room", name => {
+        if (name && !rooms.includes(name)) {
+            rooms.push(name);
+            io.emit("notify", `Raum erstellt: ${name}`);
+            updateAll();
         }
     });
 
-    socket.on("ready-for-video", () => { if (socket.authenticated) socket.to(socket.room).emit("user-ready", socket.id); });
-    socket.on("video-offer", (d) => io.to(d.to).emit("video-offer", { offer: d.offer, from: socket.id }));
-    socket.on("video-answer", (d) => io.to(d.to).emit("video-answer", { answer: d.answer, from: socket.id }));
-    socket.on("new-ice-candidate", (d) => io.to(d.to).emit("new-ice-candidate", { candidate: d.candidate, from: socket.id }));
-    socket.on("chat-message", (text) => { if (socket.authenticated) io.to(socket.room).emit("chat-message", { text, user: socket.username }); });
+    socket.on("delete-room", name => {
+        if (name !== "Lobby") {
+            rooms = rooms.filter(r => r !== name);
+            io.to(name).emit("force-lobby");
+            io.emit("notify", `Raum ${name} geschlossen.`);
+            updateAll();
+        }
+    });
+
+    socket.on("chat-message", data => {
+        io.to(socket.room).emit("chat-message", { ...data, user: socket.username });
+    });
+
+    socket.on("ready-for-video", () => socket.to(socket.room).emit("user-ready", { id: socket.id, name: socket.username }));
+    socket.on("offer", d => io.to(d.to).emit("offer", { offer: d.offer, from: socket.id, name: d.name }));
+    socket.on("answer", d => io.to(d.to).emit("answer", { answer: d.answer, from: socket.id }));
+    socket.on("ice", d => io.to(d.to).emit("ice", { candidate: d.candidate, from: socket.id }));
 
     socket.on("disconnect", () => {
-        if (socket.username) {
-            delete onlineUsers[socket.id]; io.emit("update-user-list", Object.values(onlineUsers));
-            socket.to(socket.room).emit("user-disconnected", socket.id);
+        if (users[socket.id]) {
+            const name = users[socket.id].username;
+            delete users[socket.id];
+            io.emit("notify", `${name} ist offline.`);
+            updateAll();
         }
     });
+
+    function updateAll() {
+        io.emit("update-data", { rooms, users: Object.values(users) });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`UpZocker Station auf Port ${PORT}`));
+server.listen(PORT, () => console.log("Station läuft auf Port " + PORT));

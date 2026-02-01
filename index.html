@@ -2,50 +2,61 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>UpZocker´s Room</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpZocker's Room</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
+<div id="notification-area"></div>
+<audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+
 <div id="loginContainer">
     <img src="favicon.png" class="login-logo">
-    <h2 style="margin-bottom: 20px; color: #00f5ff;">UpZocker's Room</h2>
-    <input id="usernameInput" type="text" placeholder="Dein Name..." />
-    <input id="passwordInput" type="password" placeholder="Passwort..." />
-    <button id="loginBtn" type="button" style="width: 300px;">Anmelden</button>
-    <div id="loginError" id="loginError"></div>
+    <h2 class="neon-text-cyan">UpZocker's Room</h2>
+    <div class="login-box">
+        <input id="usernameInput" type="text" placeholder="Dein Name..." />
+        <input id="passwordInput" type="password" placeholder="Passwort..." />
+        <button id="loginBtn" type="button">Anmelden</button>
+        <div id="loginError"></div>
+    </div>
 </div>
 
 <div id="appContainer" style="display:none;">
+    
     <div id="sidebar">
-        <div class="sidebar-logo-wrap">
-            <img src="favicon.png">
+        <div class="sidebar-header">
+            <img src="favicon.png" class="main-logo">
+            <h1 class="brand-title">UpZocker's Room</h1>
         </div>
-        <h3>STATION</h3>
-        <div id="roomTitle">Lobby</div>
-        <hr class="divider">
-        <div class="sidebar-label">ONLINE:</div>
-        <div id="userList"></div>
         <hr class="divider">
         <button id="createRoomBtn"><i class="fas fa-plus"></i> Neuer Raum</button>
         <div class="sidebar-label">RÄUME:</div>
         <div id="roomList"></div>
+        <hr class="divider">
+        <div class="sidebar-label">ONLINE:</div>
+        <div id="userList"></div>
     </div>
 
     <div id="mainSection">
         <div id="videoChatSection">
-            <div id="videoPlaceholder">
-                <button id="initVideoBtn" class="big-start-btn">Kamera-Uplink starten</button>
+            <div id="videoGrid">
+                <div id="videoPlaceholder">
+                    <button id="initVideoBtn" class="big-start-btn">Kamera-Uplink starten</button>
+                </div>
             </div>
-            <div id="videoGrid" style="display:none;"></div>
+            
+            <canvas id="pipCanvas" width="1280" height="720" style="display:none;"></canvas>
+            <video id="pipVideo" autoplay muted style="display:none;"></video>
+            
             <div id="videoControls" style="display:none;">
-                <button id="muteBtn" class="ctrl"><i class="fas fa-microphone"></i></button>
-                <button id="cameraBtn" class="ctrl"><i class="fas fa-video"></i></button>
-                <button id="shareBtn" class="ctrl"><i class="fas fa-desktop"></i></button>
-                <button id="expandBtn" class="ctrl"><i class="fas fa-expand"></i></button>
-                <button id="popoutBtn" class="ctrl" title="Auto-Rotations Popout"><i class="fas fa-sync-alt"></i></button>
+                <button id="muteBtn" class="ctrl" title="Mikrofon"><i class="fas fa-microphone"></i></button>
+                <button id="cameraBtn" class="ctrl" title="Kamera"><i class="fas fa-video"></i></button>
+                <button id="shareBtn" class="ctrl" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
+                <button id="popoutBtn" class="ctrl" title="Popout Modus"><i class="fas fa-th-large"></i></button>
+                <button id="expandBtn" class="ctrl" title="Vollbild"><i class="fas fa-expand"></i></button>
             </div>
         </div>
     </div>
@@ -53,12 +64,13 @@
     <div id="chatSection">
         <div id="chatBox"></div>
         <div id="emojiPicker" class="emoji-picker" style="display:none;">
-            <span>🎮</span><span>🕹️</span><span>🔥</span><span>👑</span><span>🚀</span>
-            <span>😂</span><span>😎</span><span>👍</span><span>❤️</span><span>💀</span>
+            <span>🎮</span><span>🔥</span><span>👑</span><span>🚀</span><span>😂</span><span>😎</span><span>👍</span><span>❤️</span><span>💀</span><span>🕹️</span>
         </div>
         <div id="chatInputArea">
-            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                <button id="emojiBtn" type="button">😊</button>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <button id="emojiBtn" class="chat-action-btn" type="button">😊</button>
+                <button id="fileBtn" class="chat-action-btn" type="button"><i class="fas fa-paperclip"></i></button>
+                <input type="file" id="fileInput" style="display:none;">
                 <input type="text" id="messageInput" placeholder="Nachricht...">
             </div>
             <button id="sendBtn">Senden</button>
