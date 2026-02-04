@@ -16,21 +16,29 @@ io.on("connection", socket => {
         socket.username = username; socket.authenticated = true;
         users[socket.id] = { username, room: "Lobby" };
         socket.emit("login-success");
-        io.emit("notify", `${username} ist online!`);
+        // Notify als System Message & Toast
+        io.emit("notify", `${username} ist online.`);
         updateAll();
     });
 
     socket.on("join", ({ room }) => {
         if (!socket.authenticated) return;
         socket.leave(socket.room); socket.join(room);
+        
+        // Alte Room Notify (optional, kann man weglassen wenn es nervt)
+        // io.to(socket.room).emit("notify", `${socket.username} hat den Raum verlassen.`);
+        
         socket.room = room; users[socket.id].room = room;
+        
+        // Neue Room Notify
+        io.to(room).emit("notify", `${socket.username} hat den Raum betreten.`);
         updateAll();
     });
 
     socket.on("create-room", name => {
         if (name && !rooms.includes(name)) {
             rooms.push(name);
-            io.emit("notify", `Raum erstellt: ${name}`);
+            io.emit("notify", `Neuer Raum erstellt: ${name}`);
             updateAll();
         }
     });
@@ -39,7 +47,7 @@ io.on("connection", socket => {
         if (name !== "Lobby") {
             rooms = rooms.filter(r => r !== name);
             io.to(name).emit("force-lobby");
-            io.emit("notify", `Raum ${name} geschlossen.`);
+            io.emit("notify", `Raum ${name} wurde geschlossen.`);
             updateAll();
         }
     });
@@ -48,6 +56,22 @@ io.on("connection", socket => {
         io.to(socket.room).emit("chat-message", { ...data, user: socket.username });
     });
 
+    // --- TYPING EVENTS ---
+    socket.on("typing", () => {
+        if(socket.room) socket.to(socket.room).emit("user-typing", socket.username);
+    });
+
+    socket.on("stop-typing", () => {
+        if(socket.room) socket.to(socket.room).emit("user-stop-typing");
+    });
+
+    // --- SOUNDBOARD EVENT ---
+    socket.on("play-sound", (soundId) => {
+        // Sende Sound an alle im Raum (außer an mich selbst, ich spiele ihn lokal)
+        if(socket.room) socket.to(socket.room).emit("play-sound", soundId);
+    });
+
+    // --- VIDEO EVENTS ---
     socket.on("ready-for-video", () => socket.to(socket.room).emit("user-ready", { id: socket.id, name: socket.username }));
     socket.on("offer", d => io.to(d.to).emit("offer", { offer: d.offer, from: socket.id, name: d.name }));
     socket.on("answer", d => io.to(d.to).emit("answer", { answer: d.answer, from: socket.id }));

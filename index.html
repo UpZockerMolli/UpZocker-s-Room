@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>UpZocker's Room</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
@@ -10,22 +10,32 @@
 </head>
 <body>
 
+<div class="scanlines"></div>
+
 <div id="notification-area"></div>
 <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
 
-<div id="loginContainer">
-    <img src="favicon.png" class="login-logo">
-    <h2 class="neon-text-cyan">UpZocker's Room</h2>
-    <div class="login-box">
-        <input id="usernameInput" type="text" placeholder="Dein Name..." />
-        <input id="passwordInput" type="password" placeholder="Passwort..." />
-        <button id="loginBtn" type="button">Anmelden</button>
-        <div id="loginError"></div>
+<audio id="sfx1" src="https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3" preload="auto"></audio> <audio id="sfx2" src="https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3" preload="auto"></audio> <audio id="sfx3" src="https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3" preload="auto"></audio> <audio id="sfx4" src="https://assets.mixkit.co/active_storage/sfx/2606/2606-preview.mp3" preload="auto"></audio> <div id="loginContainer">
+    <div class="login-content">
+        <img src="favicon.png" class="login-logo">
+        <h2 class="neon-text-cyan">UpZocker's Room</h2>
+        <div class="login-box">
+            <input id="usernameInput" type="text" placeholder="Dein Name..." />
+            <input id="passwordInput" type="password" placeholder="Passwort..." />
+            <button id="loginBtn" type="button">Anmelden</button>
+            <div id="loginError"></div>
+        </div>
     </div>
 </div>
 
 <div id="appContainer" style="display:none;">
     
+    <div id="mobileHeader">
+        <button id="mobileMenuBtn"><i class="fas fa-bars"></i></button>
+        <span class="mobile-brand">UpZocker's Room</span>
+        <button id="mobileChatBtn"><i class="fas fa-comments"></i></button>
+    </div>
+
     <div id="sidebar">
         <div class="sidebar-header">
             <img src="favicon.png" class="main-logo">
@@ -44,7 +54,9 @@
         <div id="videoChatSection">
             <div id="videoGrid">
                 <div id="videoPlaceholder">
-                    <button id="initVideoBtn" class="big-start-btn">Kamera-Uplink starten</button>
+                    <button id="initVideoBtn" class="big-start-btn">
+                        <i class="fas fa-power-off"></i> Kamera-Uplink starten
+                    </button>
                 </div>
             </div>
             
@@ -54,22 +66,44 @@
             <div id="videoControls" style="display:none;">
                 <button id="muteBtn" class="ctrl" title="Mikrofon"><i class="fas fa-microphone"></i></button>
                 <button id="cameraBtn" class="ctrl" title="Kamera"><i class="fas fa-video"></i></button>
-                <button id="shareBtn" class="ctrl" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
-                <button id="popoutBtn" class="ctrl" title="Popout Modus"><i class="fas fa-th-large"></i></button>
+                <button id="shareBtn" class="ctrl desktop-only" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
+                <button id="popoutBtn" class="ctrl desktop-only" title="Popout Modus"><i class="fas fa-th-large"></i></button>
                 <button id="expandBtn" class="ctrl" title="Vollbild"><i class="fas fa-expand"></i></button>
             </div>
         </div>
     </div>
 
     <div id="chatSection">
-        <div id="chatBox"></div>
-        <div id="emojiPicker" class="emoji-picker" style="display:none;">
-            <span>🎮</span><span>🔥</span><span>👑</span><span>🚀</span><span>😂</span><span>😎</span><span>👍</span><span>❤️</span><span>💀</span><span>🕹️</span>
+        <div id="chatHeaderMobile">
+            <span>Kommunikations-Log</span>
+            <button id="closeChatMobile"><i class="fas fa-times"></i></button>
         </div>
+        <div id="chatBox"></div>
+        <div id="typingIndicator"></div> <div id="emojiPicker" class="emoji-picker" style="display:none;">
+            <div class="emoji-tabs">
+                <button class="tab-btn active" data-cat="faces">😊</button>
+                <button class="tab-btn" data-cat="gestures">👌</button>
+                <button class="tab-btn" data-cat="tech">🎮</button>
+                <button class="tab-btn" data-cat="animals">🐱</button>
+                <button class="tab-btn" data-cat="misc">💖</button>
+            </div>
+            <div id="emojiGrid" class="emoji-grid"></div>
+        </div>
+
+        <div id="soundBoard" class="sound-board" style="display:none;">
+            <div class="sb-title">AUDIO FX</div>
+            <div class="sb-grid">
+                <button class="sb-btn" data-sound="sfx1">📢 Horn</button>
+                <button class="sb-btn" data-sound="sfx2">🏆 Win</button>
+                <button class="sb-btn" data-sound="sfx3">🔫 Laser</button>
+                <button class="sb-btn" data-sound="sfx4">❌ Fail</button>
+            </div>
+        </div>
+
         <div id="chatInputArea">
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <button id="emojiBtn" class="chat-action-btn" type="button">😊</button>
-                <button id="fileBtn" class="chat-action-btn" type="button"><i class="fas fa-paperclip"></i></button>
+                <button id="soundBtn" class="chat-action-btn" type="button"><i class="fas fa-music"></i></button> <button id="fileBtn" class="chat-action-btn" type="button"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="fileInput" style="display:none;">
                 <input type="text" id="messageInput" placeholder="Nachricht...">
             </div>
