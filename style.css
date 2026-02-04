@@ -87,8 +87,19 @@ body {
 .big-start-btn { padding: 25px 60px; font-size: 1.5em; background: transparent; border: 2px solid #00f5ff; border-radius: 50px; color: #00f5ff; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px rgba(0,245,255,0.2); transition: 0.4s; text-transform: uppercase; letter-spacing: 2px; }
 .big-start-btn:hover { background: #00f5ff; color: #000; box-shadow: 0 0 50px rgba(0,245,255,0.6); transform: scale(1.05); }
 
-.video-wrapper { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; position: relative; border: 1px solid #333; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: zoomIn 0.5s ease; }
-.video-wrapper.speaking { border-color: #00f5ff; box-shadow: 0 0 25px rgba(0, 245, 255, 0.5); transform: scale(1.01); transition: 0.2s; }
+.video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;      /* Füllt den Rahmen komplett aus */
+    object-position: center; /* WICHTIG: Hält das Bild immer in der Mitte */
+    transform: scaleX(-1);   /* Spiegelt das eigene Bild (optional, wirkt natürlicher) */
+}
+/* FIX: SPRACHERKENNUNG HIGHLIGHT */
+.video-wrapper.speaking {
+    border-color: #00f5ff;
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.6);
+    transform: scale(1.02);
+}
 .label { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 5px 15px; border-radius: 20px; color: #00f5ff; font-size: 0.9em; border: 1px solid rgba(0,245,255,0.3); font-weight: 600; }
 
 #videoControls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(5,7,13,0.7); backdrop-filter: blur(10px); border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideUp 0.5s ease backwards; }
