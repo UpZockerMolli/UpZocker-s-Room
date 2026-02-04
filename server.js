@@ -79,9 +79,13 @@ io.on("connection", socket => {
 
     socket.on("disconnect", () => {
         if (users[socket.id]) {
-            const name = users[socket.id].username;
+            const { room, username } = users[socket.id];
+            
+            // NEU: Dem Raum sagen, dass diese ID weg ist (damit das Video gelöscht wird)
+            io.to(room).emit("user-left", socket.id);
+            
             delete users[socket.id];
-            io.emit("notify", `${name} ist offline.`);
+            io.emit("notify", `${username} ist offline.`);
             updateAll();
         }
     });

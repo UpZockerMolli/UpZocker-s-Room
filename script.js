@@ -217,3 +217,20 @@ socket.on("user-ready", ({ id, name }) => { const pc=new RTCPeerConnection(confi
 socket.on("offer", async d => { const pc=new RTCPeerConnection(config); peers[d.from]=pc; localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); pc.onicecandidate=e=>e.candidate&&socket.emit("ice",{candidate:e.candidate,to:d.from}); addVideoNode(d.from,d.name,null,false); pc.ontrack=e=>{const v=document.querySelector(`#v-${d.from} video`);if(v)v.srcObject=e.streams[0];}; await pc.setRemoteDescription(d.offer); const a=await pc.createAnswer(); await pc.setLocalDescription(a); socket.emit("answer",{answer:a,to:d.from}); });
 socket.on("answer", d => peers[d.from]&&peers[d.from].setRemoteDescription(d.answer));
 socket.on("ice", d => peers[d.from]&&peers[d.from].addIceCandidate(d.candidate));
+// --- USER LEFT EVENT (Video entfernen) ---
+socket.on("user-left", (id) => {
+    // 1. Video Element aus dem DOM entfernen
+    const videoEl = document.getElementById(`v-${id}`);
+    if (videoEl) {
+        videoEl.remove();
+    }
+
+    // 2. Peer Connection schließen
+    if (peers[id]) {
+        peers[id].close();
+        delete peers[id];
+    }
+
+    // 3. Grid neu anordnen (damit keine Lücken bleiben)
+    updateGridStyle();
+});
