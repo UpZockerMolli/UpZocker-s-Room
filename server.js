@@ -70,6 +70,13 @@ io.on("connection", socket => {
         // Sende Sound an alle im Raum (außer an mich selbst, ich spiele ihn lokal)
         if(socket.room) socket.to(socket.room).emit("play-sound", soundId);
     });
+        // AFK Status weiterleiten
+    socket.on("toggle-afk", (isAfk) => {
+        if(socket.room) {
+            // Sende an alle anderen im Raum, wer AFK ist und ob an/aus
+            socket.to(socket.room).emit("user-afk", { id: socket.id, isAfk: isAfk });
+        }
+    });
 
     // --- VIDEO EVENTS ---
     socket.on("ready-for-video", () => socket.to(socket.room).emit("user-ready", { id: socket.id, name: socket.username }));
