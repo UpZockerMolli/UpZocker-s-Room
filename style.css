@@ -80,8 +80,29 @@ body {
 
 /* --- MAIN SECTION --- */
 #mainSection { flex: 1; display: flex; flex-direction: column; background: transparent; position: relative; height: 100%; overflow: hidden; z-index: 10000; }
-#videoChatSection { flex: 1; width: 100%; height: 100%; display: flex; position: relative; }
-#videoGrid { display: grid; width: 100%; height: 100%; padding: 20px; gap: 20px; align-items: center; justify-content: center; overflow-y: auto; }
+#videoChatSection {
+    position: relative; /* Wichtig für absolute Positionierung der Buttons */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Verhindert, dass der ganze Container scrollt */
+}
+#videoGrid {
+    /* Nimmt den ganzen Platz, lässt aber unten Raum für die Buttons */
+    flex: 1;
+    overflow-y: auto; /* Scrollen INNERHALB des Gitters erlauben! */
+    padding: 20px;
+    padding-bottom: 100px; /* WICHTIG: Extra Platz unten, damit das letzte Video nicht hinter den Buttons verschwindet */
+    
+    /* Deine existierenden Grid-Einstellungen bleiben: */
+    display: grid; 
+    gap: 15px; 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    justify-content: center; 
+    align-items: center; 
+    align-content: center; /* Zentriert Videos vertikal wenn wenige da sind */
+}
 
 #videoPlaceholder { width: 100%; height: 100%; grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(10,12,20,0.5) 0%, rgba(2,4,10,0.8) 100%); }
 .big-start-btn { padding: 25px 60px; font-size: 1.5em; background: transparent; border: 2px solid #00f5ff; border-radius: 50px; color: #00f5ff; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px rgba(0,245,255,0.2); transition: 0.4s; text-transform: uppercase; letter-spacing: 2px; }
@@ -102,7 +123,20 @@ body {
 }
 .label { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 5px 15px; border-radius: 20px; color: #00f5ff; font-size: 0.9em; border: 1px solid rgba(0,245,255,0.3); font-weight: 600; }
 
-#videoControls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(5,7,13,0.7); backdrop-filter: blur(10px); border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideUp 0.5s ease backwards; }
+#videoControls {
+    position: absolute; /* Schwebt über dem Inhalt */
+    bottom: 30px;       /* Abstand von unten */
+    left: 50%;          /* In die Mitte schieben */
+    transform: translateX(-50%); /* Exakte Zentrierung */
+    z-index: 100;       /* Immer ganz oben */
+    
+    /* Optik (Glas-Effekt damit man Videos dahinter erahnt) */
+    background: rgba(10, 14, 25, 0.85);
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 50px; /* Pillen-Form */
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8); }
 .ctrl { width: 50px; height: 50px; border-radius: 50%; border: none; background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; font-size: 1.2em; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
 .ctrl:hover { background: #00f5ff; color: #000; }
 .ctrl.off { background: rgba(255, 47, 220, 0.2); color: #ff2fdc; }
@@ -185,10 +219,43 @@ body {
     #chatHeaderMobile { display: flex; } /* Schließen Button zeigen */
 
     /* Video Anpassungen */
-    #videoGrid { padding: 10px; align-items: flex-start; }
+    #videoGrid {
+    /* Nimmt den ganzen Platz, lässt aber unten Raum für die Buttons */
+    flex: 1;
+    overflow-y: auto; /* Scrollen INNERHALB des Gitters erlauben! */
+    padding: 20px;
+    padding-bottom: 100px; /* WICHTIG: Extra Platz unten, damit das letzte Video nicht hinter den Buttons verschwindet */
+    
+    /* Deine existierenden Grid-Einstellungen bleiben: */
+    display: grid; 
+    gap: 15px; 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    justify-content: center; 
+    align-items: center; 
+    align-content: center; /* Zentriert Videos vertikal wenn wenige da sind */
+}
     .video-wrapper { max-height: none; aspect-ratio: 4/3; } /* Mehr Platz auf Handy */
     .desktop-only { display: none !important; } /* Screenshare/Popout auf Handy weg */
-    #videoControls { width: 90%; justify-content: space-around; bottom: 20px; }
+    #videoControls {
+    position: absolute; /* Schwebt über dem Inhalt */
+    bottom: 30px;       /* Abstand von unten */
+    left: 50%;          /* In die Mitte schieben */
+    transform: translateX(-50%); /* Exakte Zentrierung */
+    z-index: 100;       /* Immer ganz oben */
+    
+    /* Optik (Glas-Effekt damit man Videos dahinter erahnt) */
+    background: rgba(10, 14, 25, 0.85);
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 50px; /* Pillen-Form */
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    
+    /* Layout der Buttons */
+    display: flex; /* Falls vorher none war, wird das per JS auf flex gesetzt, das ist ok */
+    gap: 15px;
+    white-space: nowrap; /* Verhindert Umbruch auf sehr schmalen Handys */
+}
     
     .big-start-btn { padding: 15px 30px; font-size: 1.1em; }
 }
