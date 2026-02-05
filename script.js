@@ -2,6 +2,7 @@ const socket = io();
 let currentRoom = "Lobby", myName = "";
 let localStream = null;
 let peers = {};
+let isAfk = false;
 const chatSound = document.getElementById("chatSound");
 chatSound.volume = 0.5;
 
@@ -39,15 +40,52 @@ document.getElementById("loginBtn").onclick = () => {
 document.getElementById("passwordInput").addEventListener("keypress", (e) => {
     if(e.key === "Enter") document.getElementById("loginBtn").click();
 });
+// --- LOGIN SUCCESS ANIMATION SEQUENZ ---
 socket.on("login-success", () => {
     const login = document.getElementById("loginContainer");
-    login.style.opacity = "0";
-    login.style.transition = "opacity 0.5s";
+    const boot = document.getElementById("bootOverlay");
+    const app = document.getElementById("appContainer");
+    const progress = document.querySelector(".boot-progress");
+
+    // 1. Login-Fenster Glitch-Effekt starten
+    login.classList.add("login-exit");
+
+    // Warte kurz, bis der Glitch fast vorbei ist (400ms)
     setTimeout(() => {
         login.style.display = "none";
-        document.getElementById("appContainer").style.display = "flex";
-        socket.emit("join", { room: "Lobby" });
-    }, 500);
+        boot.style.display = "flex"; // Boot Screen zeigen
+        
+        // 2. Ladebalken simulieren
+        let width = 0;
+        // Intervall für den Balken (läuft ca. 1.5 Sekunden)
+        const interval = setInterval(() => {
+            // Zufällige Schritte für "echten" Look
+            width += Math.random() * 15; 
+            
+            if (width >= 100) {
+                width = 100;
+                clearInterval(interval);
+                
+                // Wenn Balken voll: Boot Screen ausblenden
+                setTimeout(() => {
+                    boot.style.transition = "opacity 0.5s ease";
+                    boot.style.opacity = "0";
+                    
+                    // 3. Haupt-App enthüllen
+                    setTimeout(() => {
+                        boot.style.display = "none";
+                        app.style.display = "flex";
+                        app.classList.add("app-entering"); // Zoom-Effekt starten
+                        
+                        // Jetzt erst dem Raum beitreten
+                        socket.emit("join", { room: "Lobby" });
+                    }, 500);
+                }, 300);
+            }
+            progress.style.width = width + "%";
+        }, 100); // Update alle 100ms
+
+    }, 400); 
 });
 socket.on("login-error", msg => document.getElementById("loginError").innerText = msg);
 
@@ -111,10 +149,104 @@ document.getElementById("shareBtn").onclick = async () => { try { const s = awai
 document.getElementById("popoutBtn").onclick = async () => { const c=document.getElementById("pipCanvas"), x=c.getContext("2d"), p=document.getElementById("pipVideo"); p.srcObject=c.captureStream(); p.onloadedmetadata=async()=>{try{await p.play();await p.requestPictureInPicture();}catch(e){}}; setInterval(()=>{ const v=Array.from(document.querySelectorAll("#videoGrid video")); x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); if(!v.length)return; const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); },100); };
 function drawCover(ctx,img,x,y,w,h){if(!img.videoWidth)return;const iR=img.videoWidth/img.videoHeight,dR=w/h;let sx,sy,sw,sh;if(iR>dR){sw=img.videoHeight*dR;sh=img.videoHeight;sx=(img.videoWidth-sw)/2;sy=0;}else{sw=img.videoWidth;sh=img.videoWidth/dR;sx=0;sy=(img.videoHeight-sh)/2;}ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);}
 document.getElementById("expandBtn").onclick = () => { const s=document.getElementById("videoChatSection"); !document.fullscreenElement ? s.requestFullscreen().catch(()=>{}) : document.exitFullscreen(); };
-function addVideoNode(id, name, stream, isLocal) { if(document.getElementById("v-"+id))return; const w=document.createElement("div"); w.id="v-"+id; w.className="video-wrapper"; const v=document.createElement("video"); v.autoplay=true; v.playsinline=true; if(isLocal){v.muted=true;v.srcObject=stream;} const l=document.createElement("div"); l.className="label"; l.innerText=name; w.append(v,l); document.getElementById("videoGrid").append(w); if(stream) setupVoice(stream,w); updateGridStyle(); }
+function addVideoNode(id, name, stream, isLocal) {
+    if (document.getElementById(`v-${id}`)) return;
+    
+    const wrap = document.createElement("div");
+    wrap.id = `v-${id}`;
+    wrap.className = "video-wrapper";
+    
+    const v = document.createElement("video");
+    v.autoplay = true; v.playsinline = true;
+    if (isLocal) v.muted = true; // Mich selbst immer muten
+    v.srcObject = stream;
+    
+    // Name Label
+    const l = document.createElement("div");
+    l.className = "label"; l.innerText = name;
+    
+    wrap.append(v, l);
+
+    // NEU: Audio Mixer (Nur für andere, nicht für mich selbst)
+    if (!isLocal) {
+        const volBox = document.createElement("div");
+        volBox.className = "volume-control";
+        volBox.innerHTML = '<i class="fas fa-volume-up vol-icon"></i> <input type="range" min="0" max="1" step="0.1" value="1" class="vol-slider">';
+        
+        // Event Listener für den Slider
+        const slider = volBox.querySelector(".vol-slider");
+        slider.oninput = (e) => {
+            v.volume = e.target.value;
+            // Icon ändern wenn stumm
+            const icon = volBox.querySelector("i");
+            if(v.volume == 0) icon.className = "fas fa-volume-mute vol-icon";
+            else icon.className = "fas fa-volume-up vol-icon";
+        };
+        
+        // Klick auf Slider soll nicht Bubblen (wichtig!)
+        volBox.onclick = (e) => e.stopPropagation();
+        
+        wrap.appendChild(volBox);
+    }
+
+    document.getElementById("videoGrid").append(wrap);
+    
+    if (stream) setupVoice(stream, wrap);
+    updateGridStyle();
+}
 function setupVoice(s,el){ const c=new(window.AudioContext||window.webkitAudioContext)(), src=c.createMediaStreamSource(s), a=c.createAnalyser(); a.fftSize=256; src.connect(a); const d=new Uint8Array(a.frequencyBinCount); const ch=()=>{a.getByteFrequencyData(d); el.classList.toggle("speaking", (d.reduce((a,b)=>a+b)/d.length)>30); requestAnimationFrame(ch);}; ch(); }
 function updateGridStyle(){ const c=document.querySelectorAll('.video-wrapper').length, g=document.getElementById("videoGrid"); g.classList.remove('grid-mode-1','grid-mode-2','grid-mode-many'); if(c===1)g.classList.add('grid-mode-1'); else if(c===2)g.classList.add('grid-mode-2'); else g.classList.add('grid-mode-many'); }
 function switchRoom(n){ if(n===currentRoom)return; for(let i in peers)peers[i].close(); peers={}; document.getElementById("videoGrid").innerHTML=""; socket.emit("join",{room:n}); currentRoom=n; document.getElementById("sidebar").classList.remove("show"); /* Mobile sidebar close */ if(localStream){addVideoNode("local",myName,localStream,true);setTimeout(()=>socket.emit("ready-for-video"),500);}else{const p=document.createElement("div"); p.id="videoPlaceholder"; p.innerHTML='<button id="initVideoBtn" class="big-start-btn"><i class="fas fa-power-off"></i> Kamera-Uplink starten</button>'; document.getElementById("videoGrid").appendChild(p); attachStartBtn(); document.getElementById("videoGrid").className="";} }
+// --- CRYO / AFK LOGIC ---
+document.getElementById("afkBtn").onclick = () => {
+    if (!localStream) return;
+    
+    isAfk = !isAfk; // Status umschalten
+    const btn = document.getElementById("afkBtn");
+    const localWrapper = document.getElementById("v-local");
+    const audioTrack = localStream.getAudioTracks()[0];
+
+    if (isAfk) {
+        // AFK AKTIVIEREN
+        btn.classList.add("active");
+        localWrapper.classList.add("cryo-active");
+        
+        // Mikrofon stumm schalten (falls es an war)
+        if (audioTrack) audioTrack.enabled = false;
+        
+        // Mute Button optisch aktualisieren (durchgestrichen)
+        document.getElementById("muteBtn").classList.add("off");
+        
+        // Info an Server
+        socket.emit("toggle-afk", true);
+        
+    } else {
+        // AFK DEAKTIVIEREN
+        btn.classList.remove("active");
+        localWrapper.classList.remove("cryo-active");
+        
+        // Mikrofon wieder an
+        if (audioTrack) audioTrack.enabled = true;
+        
+        // Mute Button wieder normal
+        document.getElementById("muteBtn").classList.remove("off");
+        
+        // Info an Server
+        socket.emit("toggle-afk", false);
+    }
+};
+
+// Event vom Server empfangen (wenn jemand anderes AFK geht)
+socket.on("user-afk", ({ id, isAfk }) => {
+    const wrapper = document.getElementById(`v-${id}`);
+    if (wrapper) {
+        if (isAfk) {
+            wrapper.classList.add("cryo-active");
+        } else {
+            wrapper.classList.remove("cryo-active");
+        }
+    }
+});
 
 // --- CHAT LOGIC ---
 const msgInput = document.getElementById("messageInput");
@@ -234,3 +366,346 @@ socket.on("user-left", (id) => {
     // 3. Grid neu anordnen (damit keine Lücken bleiben)
     updateGridStyle();
 });
+
+// --- CONFIG & HOTKEYS ---
+const configBtn = document.getElementById("configBtn");
+const configPanel = document.getElementById("configPanel");
+const hotkeyInput = document.getElementById("hotkeyInput");
+const saveConfigBtn = document.getElementById("saveConfigBtn");
+
+// Hotkey laden oder Standard "F9"
+let currentHotkey = localStorage.getItem("recHotkey") || "F9";
+hotkeyInput.value = currentHotkey;
+
+configBtn.onclick = () => { configPanel.style.display = configPanel.style.display === "none" ? "block" : "none"; };
+
+// Taste im Eingabefeld erfassen
+hotkeyInput.addEventListener("keydown", (e) => { 
+    e.preventDefault(); 
+    // Speichere den sauberen Key-Namen (z.B. "F9", "p", " ")
+    hotkeyInput.value = e.key; 
+});
+
+saveConfigBtn.onclick = () => {
+    currentHotkey = hotkeyInput.value;
+    localStorage.setItem("recHotkey", currentHotkey);
+    configPanel.style.display = "none";
+    alert(`Hotkey gespeichert: [ ${currentHotkey} ]`);
+};
+
+// GLOBALER HOTKEY LISTENER
+document.addEventListener("keydown", (e) => {
+    // Ignorieren, wenn wir tippen
+    if (["messageInput", "usernameInput", "passwordInput"].includes(document.activeElement.id)) return;
+
+    // Vergleich der Taste
+    if (e.key.toLowerCase() === currentHotkey.toLowerCase()) {
+        e.preventDefault();
+        
+        // WICHTIG: Hotkey funktioniert nur, wenn der Uplink (Stream) schon steht!
+        if (globalScreenStream && globalScreenStream.active) {
+            toggleRecordingState();
+        } else {
+            // Visuelles Feedback, dass man erst klicken muss
+            alert("⚠️ SYSTEM INFO: Bitte zuerst den 'Mission Log' Button anklicken, um den Uplink herzustellen!");
+        }
+    }
+});
+
+
+// --- MISSION LOG (STANDBY & RECORDING) ---
+let mediaRecorder;
+let recordedChunks = [];
+let globalScreenStream = null; 
+const recBtn = document.getElementById("recordBtn");
+
+// Klick-Logik: Unterscheidet zwischen Init und Aufnahme
+recBtn.onclick = async () => {
+    // 1. Wenn wir schon einen Stream haben -> Aufnahme starten/stoppen
+    if (globalScreenStream && globalScreenStream.active) {
+        toggleRecordingState();
+        return;
+    }
+
+    // 2. Wenn noch kein Stream da ist -> Initialisieren (Standby Modus)
+    await initUplink();
+};
+
+// Schritt 1: Uplink herstellen (Wird GELB)
+async function initUplink() {
+    try {
+        globalScreenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { 
+                mediaSource: "screen",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                frameRate: { ideal: 60 }
+            },
+            audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
+            }
+        });
+
+        // UI auf GELB (Ready / Standby) setzen
+        recBtn.style.color = "#ffe600"; 
+        recBtn.style.borderColor = "#ffe600";
+        recBtn.style.boxShadow = "0 0 10px #ffe600";
+        
+        // Sound Feedback (Online)
+        playSound("sfx1"); // Kurzes Signal (optional)
+
+        // Cleanup Handler
+        globalScreenStream.getVideoTracks()[0].onended = () => {
+            resetRecordingUI();
+            globalScreenStream = null;
+        };
+
+    } catch (err) {
+        console.error("Uplink failed:", err);
+    }
+}
+
+// Schritt 2: Aufnahme umschalten (Rot <-> Gelb)
+function toggleRecordingState() {
+    // STOPPEN
+    if (recBtn.classList.contains("recording")) {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+        return;
+    }
+
+    // STARTEN
+    startRecordingProcess();
+}
+
+// --- DIESE FUNKTION KOMPLETT ERSETZEN ---
+
+function startRecordingProcess() {
+    if (!globalScreenStream) return;
+
+    recordedChunks = [];
+    
+    // --- AUDIO MIXER (MIT VERSTÄRKUNG) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const dest = audioCtx.createMediaStreamDestination();
+
+    // 1. SYSTEM AUDIO (Spielsound) - Etwas leiser machen
+    if (globalScreenStream.getAudioTracks().length > 0) {
+        const sysAudioStream = new MediaStream(globalScreenStream.getAudioTracks());
+        const sysSource = audioCtx.createMediaStreamSource(sysAudioStream);
+        
+        // System Gain (Lautstärke)
+        const sysGain = audioCtx.createGain();
+        sysGain.gain.value = 0.7; // 0.7 = 70% Lautstärke (damit es die Stimme nicht übertönt)
+        
+        sysSource.connect(sysGain);
+        sysGain.connect(dest);
+    }
+
+    // 2. MIKROFON AUDIO - Deutlich lauter machen!
+    if (localStream && localStream.getAudioTracks().length > 0) {
+        const micSource = audioCtx.createMediaStreamSource(localStream);
+        
+        // Mikrofon Gain (Verstärker)
+        const micGain = audioCtx.createGain();
+        // HIER ANPASSEN: 1.0 = Normal, 3.0 = 3-fach, 5.0 = 5-fach
+        micGain.gain.value = 5.0; 
+        
+        micSource.connect(micGain);
+        micGain.connect(dest);
+    } else {
+        console.warn("Kein Mikrofon gefunden.");
+    }
+
+    // 3. Finaler Stream
+    const mixedAudioTrack = dest.stream.getAudioTracks()[0];
+    const videoTrack = globalScreenStream.getVideoTracks()[0];
+    const combinedStream = new MediaStream([videoTrack, mixedAudioTrack]);
+
+    // -----------------------------------
+
+    const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+    
+    try {
+        mediaRecorder = new MediaRecorder(combinedStream, options);
+    } catch (e) {
+        mediaRecorder = new MediaRecorder(combinedStream);
+    }
+
+    mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+        saveFile();
+        audioCtx.close(); 
+    };
+
+    mediaRecorder.start();
+    
+    // UI Update
+    recBtn.classList.add("recording");
+    recBtn.style.color = ""; 
+    recBtn.style.borderColor = ""; 
+    recBtn.style.boxShadow = "";
+    
+    // Start Sound
+    const beep = new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3"); 
+    beep.volume = 0.2; beep.play().catch(()=>{});
+}
+
+function saveFile() {
+    // UI zurück auf GELB (Standby)
+    recBtn.classList.remove("recording");
+    recBtn.style.color = "#ffe600"; 
+    recBtn.style.borderColor = "#ffe600";
+    recBtn.style.boxShadow = "0 0 10px #ffe600";
+
+    // Sound Feedback (Stop/Save - Win)
+    const beep = new Audio("https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3"); 
+    beep.volume = 0.2; beep.play().catch(()=>{});
+
+    // Datei speichern
+    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    a.download = `Mission-Log_${timestamp}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => { 
+        document.body.removeChild(a); 
+        window.URL.revokeObjectURL(url); 
+    }, 100);
+}
+
+function resetRecordingUI() {
+    recBtn.classList.remove("recording");
+    recBtn.style.color = ""; 
+    recBtn.style.borderColor = "";
+    recBtn.style.boxShadow = "";
+}
+
+// Click Outside für Config Panel
+document.addEventListener("click", (e) => {
+    if (configPanel && configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtn.contains(e.target)) {
+        configPanel.style.display = "none";
+    }
+});
+
+// --- BACKGROUND HOTKEY HACK (MEDIA SESSION API) ---
+
+if ('mediaSession' in navigator) {
+    // Wir sagen dem Browser: "Wir sind ein Media-Player"
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Mission Log Uplink',
+        artist: 'UpZocker Station',
+        album: 'Secure Connection',
+        artwork: [
+            { src: 'favicon.png', sizes: '96x96', type: 'image/png' },
+            { src: 'favicon.png', sizes: '128x128', type: 'image/png' },
+        ]
+    });
+
+    // Wir kapern die "Play" und "Pause" Taste der Tastatur
+    const triggerRecFromBackground = () => {
+        // Sound abspielen, damit man im Spiel hört, dass es geklappt hat
+        const sfx = new Audio(recBtn.classList.contains("recording") 
+            ? "https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3" // Stop Sound
+            : "https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3" // Start Sound
+        );
+        sfx.volume = 0.5;
+        sfx.play();
+
+        // Die eigentliche Funktion aufrufen
+        if (globalScreenStream && globalScreenStream.active) {
+            toggleRecordingState();
+        }
+    };
+
+    try {
+        navigator.mediaSession.setActionHandler('play', triggerRecFromBackground);
+        navigator.mediaSession.setActionHandler('pause', triggerRecFromBackground);
+        // Manche Tastaturen senden "stop", das fangen wir auch ab
+        navigator.mediaSession.setActionHandler('stop', triggerRecFromBackground); 
+    } catch (e) {
+        console.log("Media Session API warning:", e);
+    }
+}
+
+// --- VOICE COMMAND INTERFACE (BACKGROUND CONTROL) ---
+
+// Überprüfen, ob der Browser das unterstützt (Chrome/Edge/Opera tun es)
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true; // Hört dauerhaft zu
+    recognition.lang = 'de-DE'; // Deutsch funktioniert meist präziser für kurze Kommandos
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    // Starten sobald die App läuft
+    recognition.start();
+
+    recognition.onresult = (event) => {
+        const last = event.results.length - 1;
+        const command = event.results[last][0].transcript.trim().toLowerCase();
+        
+        console.log("Voice Command detected:", command);
+
+        // KOMMANDOS DEFINIEREN
+        // Du kannst auch deutsche Wörter nehmen (dann oben lang='de-DE' setzen)
+        if (command.includes("aufnahme starten") || command.includes("record start")) {
+            triggerVoiceAction(true);
+        }
+        else if (command.includes("aufnahme stoppen") || command.includes("record stop")) {
+            triggerVoiceAction(false);
+        }
+    };
+
+    // Wenn die Erkennung ausgeht (passiert manchmal), sofort neu starten
+    recognition.onend = () => {
+        // Kurze Pause, dann Restart
+        setTimeout(() => recognition.start(), 1000);
+    };
+
+    // Funktion zum Ausführen
+    function triggerVoiceAction(shouldRecord) {
+        // Sicherheitscheck: Ist Uplink da?
+        if (!globalScreenStream || !globalScreenStream.active) {
+            // Falls nicht, versuchen wir ihn wiederherzustellen oder warnen akustisch
+            const errorSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2606/2606-preview.mp3"); // Fail Sound
+            errorSound.volume = 0.3; errorSound.play().catch(()=>{});
+            console.log("Command rejected: No Uplink");
+            return;
+        }
+
+        const isRecording = recBtn.classList.contains("recording");
+
+        if (shouldRecord && !isRecording) {
+            // STARTEN
+            toggleRecordingState();
+        } else if (!shouldRecord && isRecording) {
+            // STOPPEN
+            toggleRecordingState();
+        }
+    }
+} else {
+    console.log("Voice Commands not supported in this browser.");
+}
+
+// --- INVITE SYSTEM ---
+document.getElementById("inviteBtn").onclick = () => {
+    // Nimmt die aktuelle URL aus dem Browser
+    const link = window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+        alert("COORDINATES COPIED: " + link);
+    });
+};

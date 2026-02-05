@@ -12,6 +12,11 @@
 
 <div class="scanlines"></div>
 
+<div id="bootOverlay" style="display:none;">
+    <div class="boot-text">ESTABLISHING SECURE CONNECTION...</div>
+    <div class="boot-bar"><div class="boot-progress"></div></div>
+</div>
+
 <div id="notification-area"></div>
 <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
 
@@ -40,7 +45,19 @@
         <div class="sidebar-header">
             <img src="favicon.png" class="main-logo">
             <h1 class="brand-title">UpZocker's Room</h1>
+            <button id="inviteBtn" class="settings-trigger" title="Copy Invite Link" style="margin-left: 5px;"><i class="fas fa-share-alt"></i></button>
+            <button id="configBtn" class="settings-trigger" title="System Configuration"><i class="fas fa-cog"></i></button>
         </div>
+        <div id="configPanel" class="popup-window" style="display:none;">
+            <div class="sb-title">SYSTEM CONFIG</div>
+            <div style="padding: 15px; display: flex; flex-direction: column; gap: 10px;">
+                <label style="color:#00f5ff; font-size:0.9em;">REC HOTKEY:</label>
+                <div class="hotkey-input-wrapper">
+            <input type="text" id="hotkeyInput" readonly placeholder="Press any key..." value="F9">
+        </div>
+        <button id="saveConfigBtn" class="sb-btn" style="margin-top:10px;">SAVE CONFIG</button>
+    </div>
+</div>
         <hr class="divider">
         <button id="createRoomBtn"><i class="fas fa-plus"></i> Neuer Raum</button>
         <div class="sidebar-label">RÄUME:</div>
@@ -64,7 +81,9 @@
             <video id="pipVideo" autoplay muted style="display:none;"></video>
             
             <div id="videoControls" style="display:none;">
+                <button id="afkBtn" class="ctrl" title="Cryo-Stasis (AFK)"><i class="fas fa-snowflake"></i></button>
                 <button id="muteBtn" class="ctrl" title="Mikrofon"><i class="fas fa-microphone"></i></button>
+                <button id="recordBtn" class="ctrl" title="Mission Log (REC)"><i class="fas fa-circle"></i></button>
                 <button id="cameraBtn" class="ctrl" title="Kamera"><i class="fas fa-video"></i></button>
                 <button id="shareBtn" class="ctrl desktop-only" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
                 <button id="popoutBtn" class="ctrl desktop-only" title="Popout Modus"><i class="fas fa-th-large"></i></button>
@@ -111,7 +130,6 @@
         </div>
     </div>
 </div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
 </body>
