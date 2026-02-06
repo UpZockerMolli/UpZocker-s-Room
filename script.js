@@ -90,37 +90,118 @@ socket.on("login-success", () => {
 socket.on("login-error", msg => document.getElementById("loginError").innerText = msg);
 
 // --- SIDEBAR & ROOMS ---
+// --- CUSTOM ROOM CREATION MODAL ---
+const modal = document.getElementById("customModal");
+const modalInput = document.getElementById("newRoomInput");
+const confirmBtn = document.getElementById("confirmModalBtn");
+const cancelBtn = document.getElementById("cancelModalBtn");
+
+// Öffnen des Modals
 document.getElementById("createRoomBtn").onclick = () => {
-    const newName = prompt("Name für den neuen Raum:");
-    if (newName && newName.trim() !== "") socket.emit("create-room", newName.trim());
+    modal.style.display = "flex"; // Anzeigen
+    modalInput.value = "";        // Feld leeren
+    modalInput.focus();           // Cursor reinsetzen
 };
-socket.on("update-data", ({ rooms, users }) => {
-    const rList = document.getElementById("roomList"); rList.innerHTML = "";
-    rooms.forEach(r => {
-        const wrap = document.createElement("div"); wrap.className = "room-wrap";
-        const rDiv = document.createElement("div");
-        rDiv.className = "room-entry " + (r === currentRoom ? "active-room" : "standard-room");
-        rDiv.innerHTML = `<span><i class="fas fa-hashtag"></i> ${r}</span>`;
-        rDiv.onclick = () => switchRoom(r);
-        if (r !== "Lobby") {
-            const del = document.createElement("button"); del.innerHTML = '<i class="fas fa-times"></i>';
-            del.className = "delete-room-btn";
-            del.onclick = (e) => { e.stopPropagation(); socket.emit("delete-room", r); };
-            rDiv.appendChild(del);
+
+// Schließen (Abbrechen)
+cancelBtn.onclick = () => {
+    modal.style.display = "none";
+};
+
+// Schließen (Klick auf Hintergrund)
+modal.onclick = (e) => {
+    if (e.target === modal) modal.style.display = "none";
+};
+
+// Bestätigen (Raum erstellen)
+const createRoomAction = () => {
+    const roomName = modalInput.value.trim();
+    if (roomName) {
+        // NEU: Nur erstellen, nicht beitreten!
+        socket.emit("create-room", roomName);
+        
+        modal.style.display = "none";
+        
+        if (typeof showToast === "function") {
+            showToast(`SECTOR CONSTRUCTED: [ ${roomName.toUpperCase()} ]`);
         }
-        wrap.appendChild(rDiv);
-        users.filter(u => u.room === r).forEach(u => {
-            const uSub = document.createElement("div"); 
-            uSub.className = "user-sub-entry"; uSub.innerHTML = `<i class="fas fa-circle" style="font-size:0.6em; margin-right:5px;"></i> ${u.username}`;
-            wrap.appendChild(uSub);
-        });
-        rList.appendChild(wrap);
+    }
+};
+
+// Klick auf Button
+confirmBtn.onclick = createRoomAction;
+
+// Enter-Taste im Eingabefeld
+modalInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") createRoomAction();
+    if (e.key === "Escape") modal.style.display = "none";
+});
+socket.on("update-data", ({ rooms: roomList, users: userList }) => {
+    // 1. RAUMLISTE RENDERN (Mit Lösch-Button)
+    const rList = document.getElementById("roomList");
+    rList.innerHTML = "";
+    
+    roomList.forEach(r => {
+        // Container für die Zeile (Name + Delete Button)
+        const row = document.createElement("div");
+        row.className = "room-row";
+
+        // Der "Beitreten"-Knopf
+        const btn = document.createElement("button");
+        btn.className = "room-btn"; 
+        btn.innerText = r;
+        if (r === currentRoom) btn.classList.add("active");
+        
+        btn.onclick = () => {
+             if (r !== currentRoom) {
+                 currentRoom = r;
+                 socket.emit("join", { room: r });
+             }
+        };
+
+        row.appendChild(btn);
+
+        // Der "Löschen"-Knopf (Nur wenn nicht Lobby)
+        if (r !== "Lobby") {
+            const delBtn = document.createElement("button");
+            delBtn.className = "delete-room-btn";
+            delBtn.innerHTML = '<i class="fas fa-times"></i>'; 
+            delBtn.title = "Close Sector";
+            
+            delBtn.onclick = (e) => {
+                e.stopPropagation(); 
+                
+                // HIER GEÄNDERT: Sofortiger Befehl ohne Nachfrage
+                socket.emit("delete-room", r);
+                
+                // Optional: Sound Feedback für den Klick
+                if(typeof clickSound !== "undefined") {
+                    clickSound.cloneNode().play().catch(()=>{});
+                }
+            };
+            row.appendChild(delBtn);
+        }
+        rList.appendChild(row);
     });
-    document.getElementById("userList").innerHTML = users.map(u => `
-        <div class="user-entry">
-            <span class="neon-text-cyan"><i class="fas fa-user-astronaut"></i> ${u.username}</span> 
-            <span class="user-room-tag">${u.room}</span>
-        </div>`).join("");
+
+    // 2. USERLISTE RENDERN (Auch hier machen wir es hübsch)
+    const uList = document.getElementById("userList");
+    uList.innerHTML = "";
+    userList.forEach(u => {
+        const div = document.createElement("div");
+        div.style.padding = "5px 0";
+        div.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
+        div.style.fontSize = "0.9em";
+        
+        // Unterschiedliche Farben für mich und andere
+        const color = (u.username === myName) ? "#00f5ff" : "#e5e7eb";
+        
+        div.innerHTML = `
+            <span style="color:${color}; font-weight:bold;">> ${u.username}</span> 
+            <span style="float:right; color:#666; font-size:0.8em;">[${u.room}]</span>
+        `;
+        uList.appendChild(div);
+    });
 });
 socket.on("notify", msg => {
     // Toast Notification
@@ -140,7 +221,7 @@ socket.on("notify", msg => {
 socket.on("force-lobby", () => switchRoom("Lobby"));
 
 // --- VIDEO LOGIC (Shortened where unchanged) ---
-const startCamera = async () => { try { localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); const ph = document.getElementById("videoPlaceholder"); if(ph) ph.remove(); document.getElementById("videoControls").style.display = "flex"; addVideoNode("local", myName, localStream, true); socket.emit("ready-for-video"); } catch(e) { console.error(e); alert("Kamerafehler"); } };
+const startCamera = async () => { try { localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); initVoiceCommands(); const ph = document.getElementById("videoPlaceholder"); if(ph) ph.remove(); document.getElementById("videoControls").style.display = "flex"; addVideoNode("local", myName, localStream, true); socket.emit("ready-for-video"); } catch(e) { console.error(e); if(typeof showToast === "function") showToast("UPLINK FAILED: ACCESS DENIED", "error"); } };
 function attachStartBtn() { const btn = document.getElementById("initVideoBtn"); if(btn) btn.onclick = startCamera; }
 attachStartBtn();
 document.getElementById("muteBtn").onclick = () => { if(localStream) { const t = localStream.getAudioTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById("muteBtn").classList.toggle("off", !t.enabled); } } };
@@ -197,44 +278,130 @@ function addVideoNode(id, name, stream, isLocal) {
 function setupVoice(s,el){ const c=new(window.AudioContext||window.webkitAudioContext)(), src=c.createMediaStreamSource(s), a=c.createAnalyser(); a.fftSize=256; src.connect(a); const d=new Uint8Array(a.frequencyBinCount); const ch=()=>{a.getByteFrequencyData(d); el.classList.toggle("speaking", (d.reduce((a,b)=>a+b)/d.length)>30); requestAnimationFrame(ch);}; ch(); }
 function updateGridStyle(){ const c=document.querySelectorAll('.video-wrapper').length, g=document.getElementById("videoGrid"); g.classList.remove('grid-mode-1','grid-mode-2','grid-mode-many'); if(c===1)g.classList.add('grid-mode-1'); else if(c===2)g.classList.add('grid-mode-2'); else g.classList.add('grid-mode-many'); }
 function switchRoom(n){ if(n===currentRoom)return; for(let i in peers)peers[i].close(); peers={}; document.getElementById("videoGrid").innerHTML=""; socket.emit("join",{room:n}); currentRoom=n; document.getElementById("sidebar").classList.remove("show"); /* Mobile sidebar close */ if(localStream){addVideoNode("local",myName,localStream,true);setTimeout(()=>socket.emit("ready-for-video"),500);}else{const p=document.createElement("div"); p.id="videoPlaceholder"; p.innerHTML='<button id="initVideoBtn" class="big-start-btn"><i class="fas fa-power-off"></i> Kamera-Uplink starten</button>'; document.getElementById("videoGrid").appendChild(p); attachStartBtn(); document.getElementById("videoGrid").className="";} }
-// --- CRYO / AFK LOGIC ---
-document.getElementById("afkBtn").onclick = () => {
-    if (!localStream) return;
+// --- AFK / CRYO STASIS (MIT PIP SUPPORT) ---
+const originalStreams = {}; // Speicher für die echten Webcam-Streams
+
+// Hilfsfunktion: Erzeugt ein Standbild (Angepasste Größe)
+function createCryoStream() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 640; canvas.height = 360; // 16:9 Format
+    const ctx = canvas.getContext("2d");
     
-    isAfk = !isAfk; // Status umschalten
+    // Hintergrund (Schwarz/Blau)
+    ctx.fillStyle = "#05070d";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Dicker Rahmen außen
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = "#00f5ff";
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    
+    // Text Styling (KLEINER GEMACHT)
+    ctx.fillStyle = "#00f5ff";
+    ctx.font = "bold 40px monospace"; // Vorher 60px
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle"; // Wichtig für exakte vertikale Mitte
+    ctx.shadowColor = "#00f5ff";
+    ctx.shadowBlur = 15;
+    
+    // Text zeichnen
+    ctx.fillText("CRYO STASIS", canvas.width / 2, canvas.height / 2);
+    
+    // Optional: Kleinerer Subtext darunter für Cyberpunk-Feeling
+    ctx.font = "14px monospace";
+    ctx.fillStyle = "rgba(0, 245, 255, 0.7)";
+    ctx.shadowBlur = 0;
+    ctx.fillText("PILOT OFFLINE", canvas.width / 2, canvas.height / 2 + 35);
+
+    // Scanlines Effekt
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    for(let i=0; i<canvas.height; i+=4) ctx.fillRect(0, i, canvas.width, 2);
+
+    return canvas.captureStream(30);
+}
+
+// Funktion zum Umschalten des Streams
+function toggleAfkVisuals(id, isAfk) {
+    const wrapper = document.getElementById(`v-${id}`);
+    if (!wrapper) return;
+    const video = wrapper.querySelector("video");
+
+    if (isAfk) {
+        // Style für das normale Fenster setzen
+        wrapper.classList.add("cryo-active");
+        
+        // Original Stream sichern (falls noch nicht geschehen)
+        if (!originalStreams[id]) {
+            originalStreams[id] = video.srcObject;
+        }
+        
+        // Stream gegen Cryo-Bild tauschen (Das sieht man dann im PiP!)
+        const cryoStream = createCryoStream();
+        // WICHTIG: Audio-Track vom Original behalten, sonst ist der User stumm (falls er nicht gemutet ist)
+        if (originalStreams[id] && originalStreams[id].getAudioTracks().length > 0) {
+            cryoStream.addTrack(originalStreams[id].getAudioTracks()[0]);
+        }
+        
+        video.srcObject = cryoStream;
+        
+    } else {
+        // Style entfernen
+        wrapper.classList.remove("cryo-active");
+        
+        // Original Stream wiederherstellen
+        if (originalStreams[id]) {
+            video.srcObject = originalStreams[id];
+            delete originalStreams[id]; // Speicher freigeben
+        }
+    }
+}
+
+// 1. Eigener Button Klick (AFK + Mute Logik)
+document.getElementById("afkBtn").onclick = () => {
+    // Sicherheitscheck: Haben wir überhaupt einen Stream?
+    if (!localStream) {
+        alert("Bitte erst 'ACTIVATE CAMERA' klicken!");
+        return;
+    }
+
+    isAfk = !isAfk;
     const btn = document.getElementById("afkBtn");
-    const localWrapper = document.getElementById("v-local");
+    
+    // Zugriff auf die Tonspur deines Mikrofons
     const audioTrack = localStream.getAudioTracks()[0];
 
     if (isAfk) {
-        // AFK AKTIVIEREN
+        // --- CRYO AKTIVIEREN ---
         btn.classList.add("active");
-        localWrapper.classList.add("cryo-active");
         
-        // Mikrofon stumm schalten (falls es an war)
-        if (audioTrack) audioTrack.enabled = false;
+        // 1. Mikrofon HARDWARE-SEITIG stummschalten
+        if(audioTrack) audioTrack.enabled = false;
         
-        // Mute Button optisch aktualisieren (durchgestrichen)
-        document.getElementById("muteBtn").classList.add("off");
-        
-        // Info an Server
+        // 2. Signal an Server senden
         socket.emit("toggle-afk", true);
         
+        // 3. Optik ändern (Canvas Text anzeigen)
+        toggleAfkVisuals("local", true);
+        
     } else {
-        // AFK DEAKTIVIEREN
+        // --- CRYO DEAKTIVIEREN ---
         btn.classList.remove("active");
-        localWrapper.classList.remove("cryo-active");
         
-        // Mikrofon wieder an
-        if (audioTrack) audioTrack.enabled = true;
+        // 1. Mikrofon wieder einschalten
+        if(audioTrack) audioTrack.enabled = true;
         
-        // Mute Button wieder normal
-        document.getElementById("muteBtn").classList.remove("off");
-        
-        // Info an Server
+        // 2. Signal an Server senden
         socket.emit("toggle-afk", false);
+        
+        // 3. Optik zurücksetzen (Webcam anzeigen)
+        toggleAfkVisuals("local", false);
     }
 };
+
+// 2. Signal von anderen empfangen
+socket.on("user-afk", ({ id, isAfk }) => {
+    toggleAfkVisuals(id, isAfk);
+});
 
 // Event vom Server empfangen (wenn jemand anderes AFK geht)
 socket.on("user-afk", ({ id, isAfk }) => {
@@ -390,7 +557,7 @@ saveConfigBtn.onclick = () => {
     currentHotkey = hotkeyInput.value;
     localStorage.setItem("recHotkey", currentHotkey);
     configPanel.style.display = "none";
-    alert(`Hotkey gespeichert: [ ${currentHotkey} ]`);
+    showToast(`CONFIG UPDATED: [ ${currentHotkey} ]`);
 };
 
 // GLOBALER HOTKEY LISTENER
@@ -407,7 +574,7 @@ document.addEventListener("keydown", (e) => {
             toggleRecordingState();
         } else {
             // Visuelles Feedback, dass man erst klicken muss
-            alert("⚠️ SYSTEM INFO: Bitte zuerst den 'Mission Log' Button anklicken, um den Uplink herzustellen!");
+            showToast("ERROR: UPLINK REQUIRED", "error");
         }
     }
 });
@@ -480,8 +647,6 @@ function toggleRecordingState() {
     // STARTEN
     startRecordingProcess();
 }
-
-// --- DIESE FUNKTION KOMPLETT ERSETZEN ---
 
 function startRecordingProcess() {
     if (!globalScreenStream) return;
@@ -639,66 +804,90 @@ if ('mediaSession' in navigator) {
     }
 }
 
-// --- VOICE COMMAND INTERFACE (BACKGROUND CONTROL) ---
+// --- VOICE COMMANDS (ROBUST RESTART) ---
+let recognition; 
 
-// Überprüfen, ob der Browser das unterstützt (Chrome/Edge/Opera tun es)
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+function initVoiceCommands() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Hört dauerhaft zu
-    recognition.lang = 'de-DE'; // Deutsch funktioniert meist präziser für kurze Kommandos
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    if (!SpeechRecognition) return; // Browser kann das nicht
 
-    // Starten sobald die App läuft
-    recognition.start();
-
-    recognition.onresult = (event) => {
-        const last = event.results.length - 1;
-        const command = event.results[last][0].transcript.trim().toLowerCase();
-        
-        console.log("Voice Command detected:", command);
-
-        // KOMMANDOS DEFINIEREN
-        // Du kannst auch deutsche Wörter nehmen (dann oben lang='de-DE' setzen)
-        if (command.includes("aufnahme starten") || command.includes("record start")) {
-            triggerVoiceAction(true);
-        }
-        else if (command.includes("aufnahme stoppen") || command.includes("record stop")) {
-            triggerVoiceAction(false);
-        }
-    };
-
-    // Wenn die Erkennung ausgeht (passiert manchmal), sofort neu starten
-    recognition.onend = () => {
-        // Kurze Pause, dann Restart
-        setTimeout(() => recognition.start(), 1000);
-    };
-
-    // Funktion zum Ausführen
-    function triggerVoiceAction(shouldRecord) {
-        // Sicherheitscheck: Ist Uplink da?
-        if (!globalScreenStream || !globalScreenStream.active) {
-            // Falls nicht, versuchen wir ihn wiederherzustellen oder warnen akustisch
-            const errorSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2606/2606-preview.mp3"); // Fail Sound
-            errorSound.volume = 0.3; errorSound.play().catch(()=>{});
-            console.log("Command rejected: No Uplink");
-            return;
-        }
-
-        const isRecording = recBtn.classList.contains("recording");
-
-        if (shouldRecord && !isRecording) {
-            // STARTEN
-            toggleRecordingState();
-        } else if (!shouldRecord && isRecording) {
-            // STOPPEN
-            toggleRecordingState();
-        }
+    // Falls schon eine Instanz läuft -> Stoppen um Konflikte zu vermeiden
+    if (recognition) {
+        try { recognition.stop(); } catch(e){}
     }
-} else {
-    console.log("Voice Commands not supported in this browser.");
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;  // Zuhören nicht aufhören
+    recognition.lang = 'de-DE';     // Sprache
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+        console.log("🎤 Voice Command System: LISTENING");
+    };
+
+    recognition.onerror = (event) => {
+        console.warn("Voice Error:", event.error);
+    };
+
+    recognition.onend = () => {
+        // Wenn die Kamera noch läuft -> Sofort neu starten!
+        if (localStream) {
+            console.log("Voice Service paused. Restarting...");
+            setTimeout(() => { 
+                try { recognition.start(); } catch(e){} 
+            }, 1000);
+        }
+    };
+
+    recognition.onresult = (e) => {
+        const last = e.results.length - 1;
+        const cmd = e.results[last][0].transcript.trim().toLowerCase();
+        console.log("Befehl erkannt:", cmd); // Debugging im Log
+
+        // Befehle filtern
+        if (["messageInput", "usernameInput", "passwordInput"].includes(document.activeElement.id)) return;
+
+        // --- COMMAND LIST ---
+        if ((cmd.includes("Aufnahme starten") || cmd.includes("record start"))) {
+            // Nur starten, wenn Screen-Sharing da ist und wir nicht schon aufnehmen
+            if(globalScreenStream && !recBtn.classList.contains("recording")) {
+                toggleRecordingState();
+                if(typeof showToast === "function") showToast("VOICE: RECORDING INITIATED");
+            }
+        }
+        else if ((cmd.includes("Aufnahme stoppen") || cmd.includes("record stop"))) {
+            if(recBtn.classList.contains("recording")) {
+                toggleRecordingState();
+                if(typeof showToast === "function") showToast("VOICE: RECORDING STOPPED");
+            }
+        }
+    };
+
+    // ZÜNDUNG
+    try { recognition.start(); } catch(e) {}
+}
+
+// Funktion zum Ausführen
+function triggerVoiceAction(shouldRecord) {
+    // Sicherheitscheck: Ist Uplink da?
+    if (!globalScreenStream || !globalScreenStream.active) {
+        // Falls nicht, versuchen wir ihn wiederherzustellen oder warnen akustisch
+        const errorSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2606/2606-preview.mp3"); // Fail Sound
+        errorSound.volume = 0.3; errorSound.play().catch(()=>{});
+        console.log("Command rejected: No Uplink");
+        return;
+    }
+
+    const isRecording = recBtn.classList.contains("recording");
+
+    if (shouldRecord && !isRecording) {
+        // STARTEN
+        toggleRecordingState();
+    } else if (!shouldRecord && isRecording) {
+        // STOPPEN
+        toggleRecordingState();
+    }
 }
 
 // --- INVITE SYSTEM ---
@@ -706,6 +895,49 @@ document.getElementById("inviteBtn").onclick = () => {
     // Nimmt die aktuelle URL aus dem Browser
     const link = window.location.href;
     navigator.clipboard.writeText(link).then(() => {
-        alert("COORDINATES COPIED: " + link);
+        showToast("COORDINATES COPIED TO CLIPBOARD");
     });
 };
+
+// --- TACTICAL TOAST SYSTEM ---
+function showToast(message, type = "info") {
+    const container = document.getElementById("toastContainer");
+    
+    // Element erstellen
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    
+    // Icon wählen
+    const iconClass = type === "error" ? "fa-exclamation-triangle" : "fa-check-circle";
+    
+    toast.innerHTML = `<i class="fas ${iconClass}"></i> <span>${message}</span>`;
+    
+    // Sound abspielen (kurzer System-Beep)
+    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3");
+    audio.volume = 0.2;
+    audio.play().catch(()=>{});
+
+    container.appendChild(toast);
+
+    // Nach 4 Sekunden entfernen
+    setTimeout(() => {
+        toast.style.animation = "fadeOutToast 0.5s forwards";
+        setTimeout(() => toast.remove(), 500);
+    }, 4000);
+}
+
+// --- GLOBAL UI SOUNDS ---
+// Ein kurzer, dezenter Klick-Sound
+const clickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
+clickSound.volume = 0.1; // Sehr leise, nur unbewusst wahrnehmbar
+
+// Fügt den Sound zu ALLEN Buttons hinzu (automatisch)
+document.addEventListener("click", (e) => {
+    // Prüfen, ob das geklickte Element (oder sein Elternteil) ein Button ist
+    if (e.target.tagName === "BUTTON" || e.target.closest("button")) {
+        // Sound klonen, damit er sich überlappen kann (schnelles Klicken)
+        const soundClone = clickSound.cloneNode();
+        soundClone.volume = 0.1;
+        soundClone.play().catch(()=>{});
+    }
+});

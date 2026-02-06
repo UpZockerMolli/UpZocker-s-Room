@@ -21,35 +21,58 @@ io.on("connection", socket => {
         updateAll();
     });
 
+    // RAUM BETRETEN (Vereinfacht)
     socket.on("join", ({ room }) => {
         if (!socket.authenticated) return;
-        socket.leave(socket.room); socket.join(room);
+        const oldRoom = socket.room;
         
-        // Alte Room Notify (optional, kann man weglassen wenn es nervt)
-        // io.to(socket.room).emit("notify", `${socket.username} hat den Raum verlassen.`);
+        if(oldRoom) {
+            socket.leave(oldRoom);
+            io.to(oldRoom).emit("user-left", socket.id);
+        }
+
+        socket.join(room);
+        socket.room = room;
+        users[socket.id].room = room;
+
+        io.emit("notify", `[SYSTEM]: ${socket.username} verlegt in Sektor [${room}].`);
+        updateAll();
+    });
+    // NEU: Nur Raum erstellen (ohne beitreten)
+    socket.on("create-room", (roomName) => {
+        if (!roomName || rooms.includes(roomName)) return; // Gibts schon oder leer
         
-        socket.room = room; users[socket.id].room = room;
-        
-        // Neue Room Notify
-        io.to(room).emit("notify", `${socket.username} hat den Raum betreten.`);
+        rooms.push(roomName);
+        io.emit("notify", `[SYSTEM]: Neuer Sektor [${roomName}] wurde initialisiert.`);
         updateAll();
     });
 
-    socket.on("create-room", name => {
-        if (name && !rooms.includes(name)) {
-            rooms.push(name);
-            io.emit("notify", `Neuer Raum erstellt: ${name}`);
-            updateAll();
-        }
-    });
+    // NEU: Raum löschen
+    socket.on("delete-room", (roomName) => {
+        // Lobby darf niemals gelöscht werden
+        if (roomName === "Lobby") return;
 
-    socket.on("delete-room", name => {
-        if (name !== "Lobby") {
-            rooms = rooms.filter(r => r !== name);
-            io.to(name).emit("force-lobby");
-            io.emit("notify", `Raum ${name} wurde geschlossen.`);
-            updateAll();
+        // 1. Aus Liste entfernen
+        rooms = rooms.filter(r => r !== roomName);
+
+        // 2. Alle User in diesem Raum zwangsweise in die Lobby verschieben
+        // Wir suchen alle Sockets in diesem Raum
+        const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
+        if (socketsInRoom) {
+            for (const clientId of socketsInRoom) {
+                const clientSocket = io.sockets.sockets.get(clientId);
+                if (clientSocket) {
+                    clientSocket.leave(roomName);
+                    clientSocket.join("Lobby");
+                    clientSocket.room = "Lobby";
+                    if (users[clientId]) users[clientId].room = "Lobby";
+                    clientSocket.emit("force-lobby"); // Signal an Client (optional)
+                }
+            }
         }
+
+        io.emit("notify", `[SYSTEM]: Sektor [${roomName}] wurde geschlossen. Alle Einheiten zur Lobby verlegt.`);
+        updateAll();
     });
 
     socket.on("chat-message", data => {

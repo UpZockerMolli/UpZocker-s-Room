@@ -80,8 +80,29 @@ body {
 
 /* --- MAIN SECTION --- */
 #mainSection { flex: 1; display: flex; flex-direction: column; background: transparent; position: relative; height: 100%; overflow: hidden; z-index: 10000; }
-#videoChatSection { flex: 1; width: 100%; height: 100%; display: flex; position: relative; }
-#videoGrid { display: grid; width: 100%; height: 100%; padding: 20px; gap: 20px; align-items: center; justify-content: center; overflow-y: auto; }
+#videoChatSection {
+    position: relative; /* Wichtig für absolute Positionierung der Buttons */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Verhindert, dass der ganze Container scrollt */
+}
+#videoGrid {
+    /* Nimmt den ganzen Platz, lässt aber unten Raum für die Buttons */
+    flex: 1;
+    overflow-y: auto; /* Scrollen INNERHALB des Gitters erlauben! */
+    padding: 20px;
+    padding-bottom: 100px; /* WICHTIG: Extra Platz unten, damit das letzte Video nicht hinter den Buttons verschwindet */
+    
+    /* Deine existierenden Grid-Einstellungen bleiben: */
+    display: grid; 
+    gap: 15px; 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    justify-content: center; 
+    align-items: center; 
+    align-content: center; /* Zentriert Videos vertikal wenn wenige da sind */
+}
 
 #videoPlaceholder { width: 100%; height: 100%; grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(10,12,20,0.5) 0%, rgba(2,4,10,0.8) 100%); }
 .big-start-btn { padding: 25px 60px; font-size: 1.5em; background: transparent; border: 2px solid #00f5ff; border-radius: 50px; color: #00f5ff; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px rgba(0,245,255,0.2); transition: 0.4s; text-transform: uppercase; letter-spacing: 2px; }
@@ -94,15 +115,64 @@ body {
     object-position: center; /* WICHTIG: Hält das Bild immer in der Mitte */
     transform: scaleX(-1);   /* Spiegelt das eigene Bild (optional, wirkt natürlicher) */
 }
-/* FIX: SPRACHERKENNUNG HIGHLIGHT */
-.video-wrapper.speaking {
-    border-color: #00f5ff;
-    box-shadow: 0 0 20px rgba(0, 245, 255, 0.6);
-    transform: scale(1.02);
-}
-.label { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 5px 15px; border-radius: 20px; color: #00f5ff; font-size: 0.9em; border: 1px solid rgba(0,245,255,0.3); font-weight: 600; }
+/* --- HUD NAMETAG FIX --- */
 
-#videoControls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; padding: 10px 25px; background: rgba(5,7,13,0.7); backdrop-filter: blur(10px); border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideUp 0.5s ease backwards; }
+.video-wrapper {
+    position: relative !important; /* WICHTIG: Macht den Wrapper zum Anker */
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Nichts darf rausragen */
+    border-radius: 4px; /* Optional: runde Ecken wie vorher */
+    /* ... deine anderen Styles für Border etc. bleiben ... */
+}
+
+/* Das Namensschild */
+.video-wrapper .label {
+    position: absolute !important; /* Zwingend über das Video legen */
+    bottom: 15px;      /* Festgeklebt 15px von unten */
+    left: 15px;        /* Festgeklebt 15px von links */
+    z-index: 50;       /* Immer ganz oben */
+    
+    /* HUD Style */
+    background: rgba(10, 14, 25, 0.85); 
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    border-left: 4px solid #00f5ff;
+    color: #e5e7eb;
+    padding: 5px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    pointer-events: none;
+    transition: all 0.2s ease; /* Weiches Überblenden statt Springen */
+}
+
+/* Wenn gesprochen wird: Nur Farbe ändern, NICHT die Position! */
+.video-wrapper.speaking .label {
+    border-left-color: #ff00de;
+    color: #fff;
+    text-shadow: 0 0 5px #ff00de;
+    transform: scale(1.05); /* Minimal größer werden statt springen */
+}
+
+@keyframes slideInTag {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+#videoControls {
+    position: absolute; /* Schwebt über dem Inhalt */
+    bottom: 30px;       /* Abstand von unten */
+    left: 50%;          /* In die Mitte schieben */
+    transform: translateX(-50%); /* Exakte Zentrierung */
+    z-index: 100;       /* Immer ganz oben */
+    
+    /* Optik (Glas-Effekt damit man Videos dahinter erahnt) */
+    background: rgba(10, 14, 25, 0.85);
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 50px; /* Pillen-Form */
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8); }
 .ctrl { width: 50px; height: 50px; border-radius: 50%; border: none; background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; font-size: 1.2em; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
 .ctrl:hover { background: #00f5ff; color: #000; }
 .ctrl.off { background: rgba(255, 47, 220, 0.2); color: #ff2fdc; }
@@ -185,10 +255,43 @@ body {
     #chatHeaderMobile { display: flex; } /* Schließen Button zeigen */
 
     /* Video Anpassungen */
-    #videoGrid { padding: 10px; align-items: flex-start; }
+    #videoGrid {
+    /* Nimmt den ganzen Platz, lässt aber unten Raum für die Buttons */
+    flex: 1;
+    overflow-y: auto; /* Scrollen INNERHALB des Gitters erlauben! */
+    padding: 20px;
+    padding-bottom: 100px; /* WICHTIG: Extra Platz unten, damit das letzte Video nicht hinter den Buttons verschwindet */
+    
+    /* Deine existierenden Grid-Einstellungen bleiben: */
+    display: grid; 
+    gap: 15px; 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    justify-content: center; 
+    align-items: center; 
+    align-content: center; /* Zentriert Videos vertikal wenn wenige da sind */
+}
     .video-wrapper { max-height: none; aspect-ratio: 4/3; } /* Mehr Platz auf Handy */
     .desktop-only { display: none !important; } /* Screenshare/Popout auf Handy weg */
-    #videoControls { width: 90%; justify-content: space-around; bottom: 20px; }
+    #videoControls {
+    position: absolute; /* Schwebt über dem Inhalt */
+    bottom: 30px;       /* Abstand von unten */
+    left: 50%;          /* In die Mitte schieben */
+    transform: translateX(-50%); /* Exakte Zentrierung */
+    z-index: 100;       /* Immer ganz oben */
+    
+    /* Optik (Glas-Effekt damit man Videos dahinter erahnt) */
+    background: rgba(10, 14, 25, 0.85);
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 50px; /* Pillen-Form */
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    
+    /* Layout der Buttons */
+    display: flex; /* Falls vorher none war, wird das per JS auf flex gesetzt, das ist ok */
+    gap: 15px;
+    white-space: nowrap; /* Verhindert Umbruch auf sehr schmalen Handys */
+}
     
     .big-start-btn { padding: 15px 30px; font-size: 1.1em; }
 }
@@ -434,4 +537,248 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #00f5ff;
     box-shadow: 0 0 15px #00f5ff;
+}
+
+/* --- SIGNATURE FOOTER (BRIGHT VERSION) --- */
+#systemSignature {
+    position: fixed;
+    bottom: 5px;
+    right: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px; /* Minimal größer */
+    font-weight: bold; /* Fetter, damit es besser lesbar ist */
+    color: #00f5ff;    /* Volle Neon-Farbe */
+    z-index: 500;
+    pointer-events: none;
+    letter-spacing: 1px;
+    
+    /* Starker Neon-Glow */
+    text-shadow: 0 0 5px rgba(0, 245, 255, 0.8);
+    
+    /* Langsames "Atmen" statt fast unsichtbar */
+    animation: pulseSig 3s infinite ease-in-out;
+}
+
+@media (max-width: 768px) {
+    #systemSignature { bottom: 65px; right: 5px; font-size: 9px; } 
+}
+
+@keyframes pulseSig {
+    0%, 100% { opacity: 0.7; } /* Geht nie unter 70% Sichtbarkeit */
+    50% { opacity: 1.0; text-shadow: 0 0 15px #00f5ff; } /* Leuchtet auf */
+}
+
+/* --- TACTICAL TOASTS --- */
+#toastContainer {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* Klicks gehen durch leere Bereiche durch */
+}
+
+.toast {
+    background: rgba(10, 14, 25, 0.95);
+    border: 1px solid #00f5ff;
+    border-left: 5px solid #00f5ff; /* Akzent-Balken links */
+    color: #e5e7eb;
+    padding: 15px 20px;
+    min-width: 280px;
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    animation: slideInToast 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    pointer-events: auto;
+}
+
+.toast i { font-size: 1.2em; color: #00f5ff; }
+.toast span { font-size: 1.1em; letter-spacing: 1px; }
+
+/* Fehler-Variante (Rot) */
+.toast.error {
+    border-color: #ff0000;
+    border-left-color: #ff0000;
+}
+.toast.error i { color: #ff0000; }
+
+@keyframes slideInToast {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOutToast {
+    to { transform: translateX(20px); opacity: 0; }
+}
+
+/* --- CUSTOM MODAL (NEON POPUP) --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 13, 0.85); /* Dunkler Hintergrund */
+    backdrop-filter: blur(5px);       /* Milchglas-Effekt */
+    z-index: 20000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeInModal 0.3s ease-out;
+}
+
+.modal-box {
+    background: rgba(10, 14, 25, 0.95);
+    border: 1px solid #00f5ff;
+    border-radius: 4px;
+    box-shadow: 0 0 30px rgba(0, 245, 255, 0.2);
+    width: 90%;
+    max-width: 400px;
+    padding: 2px; /* Für den doppelten Rahmen-Effekt innen */
+    transform: scale(0.9);
+    animation: zoomInModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.modal-title {
+    background: rgba(0, 245, 255, 0.1);
+    color: #00f5ff;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: bold;
+    padding: 10px 15px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(0, 245, 255, 0.3);
+    text-shadow: 0 0 5px rgba(0, 245, 255, 0.5);
+}
+
+.modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Das Eingabefeld im Modal */
+#newRoomInput {
+    background: #05070d;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 1.1em;
+    outline: none;
+    transition: 0.3s;
+    text-align: center;
+}
+#newRoomInput:focus {
+    border-color: #00f5ff;
+    box-shadow: 0 0 10px rgba(0, 245, 255, 0.2);
+}
+
+/* Buttons */
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+.modal-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: bold;
+    font-size: 1em;
+    transition: 0.2s;
+}
+.modal-btn.confirm {
+    background: #00f5ff;
+    color: #000;
+}
+.modal-btn.confirm:hover {
+    background: #fff;
+    box-shadow: 0 0 15px #00f5ff;
+}
+.modal-btn.cancel {
+    background: transparent;
+    border: 1px solid #ff0000;
+    color: #ff0000;
+}
+.modal-btn.cancel:hover {
+    background: rgba(255, 0, 0, 0.1);
+    box-shadow: 0 0 10px #ff0000;
+}
+
+@keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomInModal { to { transform: scale(1); } }
+
+/* --- ROOM LIST BUTTONS (FIX) --- */
+.room-btn {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: rgba(10, 14, 25, 0.6);
+    border: 1px solid #333;
+    border-left: 3px solid #333;
+    color: #888;
+    text-align: left;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase; /* Alles GROSS schreiben */
+    letter-spacing: 1px;
+}
+
+.room-btn:hover {
+    color: #fff;
+    border-color: #00f5ff;
+    padding-left: 20px; /* Kleiner Hover-Effekt nach rechts */
+    background: linear-gradient(90deg, rgba(0,245,255,0.1), transparent);
+}
+
+/* Der aktive Raum */
+.room-btn.active {
+    border-color: #00f5ff;
+    border-left: 3px solid #00f5ff;
+    color: #00f5ff;
+    background: rgba(0, 245, 255, 0.15);
+    box-shadow: 0 0 15px rgba(0, 245, 255, 0.1);
+    font-weight: bold;
+}
+
+/* --- ROOM LIST LAYOUT (SPLIT BUTTONS) --- */
+.room-row {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+/* Der Raum-Name Button nimmt den meisten Platz */
+.room-row .room-btn {
+    flex: 1;
+    margin-bottom: 0; /* Margin übernimmt jetzt die Row */
+}
+
+/* Der Lösch-Button */
+.delete-room-btn {
+    width: 40px;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid #550000;
+    color: #ff0000;
+    cursor: pointer;
+    font-size: 1em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.2s;
+}
+
+.delete-room-btn:hover {
+    background: #ff0000;
+    color: #000;
+    box-shadow: 0 0 10px #ff0000;
 }
