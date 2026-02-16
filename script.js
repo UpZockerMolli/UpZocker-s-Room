@@ -594,16 +594,41 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
 
 // 3. Speichern aller Hotkeys
 document.getElementById("saveConfigBtn").onclick = () => {
+    const electronKeys = {}; // Sammelt die Tasten für den Desktop-Client
+    
     Object.keys(hotkeys).forEach(key => {
         const inputEl = document.getElementById(hotkeys[key].id);
         if (inputEl) {
             hotkeys[key].current = inputEl.value;
             localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
+            electronKeys[key] = hotkeys[key].current;
         }
     });
     configPanel.style.display = "none";
     showToast("SYSTEM CONFIG UPDATED");
+
+    // NEU: Wenn wir im Desktop-Client sind, schicke die Tasten an Windows!
+    if (window.electronAPI) {
+        window.electronAPI.updateHotkeys(electronKeys);
+    }
 };
+
+// NEU: Initialer Brückenschlag zum Desktop-Client (direkt unter dem Save-Block einfügen)
+if (window.electronAPI) {
+    // Sende beim Laden direkt die gespeicherten Tasten an Windows
+    const electronKeys = {};
+    Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
+    window.electronAPI.updateHotkeys(electronKeys);
+
+    // Höre auf globale Tastendrücke aus dem Windows-Hintergrund
+    window.electronAPI.onHotkey((action) => {
+        // Simuliere einfach einen physischen Klick auf den zugewiesenen Button
+        const targetBtn = document.getElementById(hotkeys[action].btn);
+        if (targetBtn) {
+            targetBtn.click();
+        }
+    });
+}
 
 // 4. Globaler Listener (Führt die Aktionen aus)
 document.addEventListener("keydown", (e) => {
