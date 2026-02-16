@@ -493,6 +493,7 @@ document.getElementById("configBtn").onclick = () => configPanel.style.display =
 // Definition aller Hotkeys und deren Ziel-Buttons
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "F9", current: "" },
+    radio:  { id: "hotkeyRadio",  btn: "radioBtn",   default: "",   current: "" },
     afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
     mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },
     cam:    { id: "hotkeyCam",    btn: "cameraBtn",  default: "",   current: "" },
@@ -765,3 +766,94 @@ document.addEventListener("click", (e) => {
         const s = clickSound.cloneNode(); s.volume = 0.1; s.play().catch(()=>{});
     }
 });
+
+// --- UPGRADE: MILITARY RADIO FILTER (VOICE MODULATOR) ---
+let isRadioActive = false;
+let rawAudioTrack = null;
+let radioAudioTrack = null;
+let radioAudioCtx = null;
+
+// Helper: Erzeugt künstliche Verzerrung (Distortion)
+function makeDistortionCurve(amount) {
+    let k = typeof amount === 'number' ? amount : 50,
+        n_samples = 44100, curve = new Float32Array(n_samples),
+        deg = Math.PI / 180, i = 0, x;
+    for ( ; i < n_samples; ++i ) {
+        x = i * 2 / n_samples - 1;
+        curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+    }
+    return curve;
+}
+
+// Initialisiert den Filter (wird beim Kamera-Start gerufen)
+function initRadioFilter() {
+    if (!localStream || localStream.getAudioTracks().length === 0) return;
+    
+    rawAudioTrack = localStream.getAudioTracks()[0];
+    
+    // Audio Context aufbauen
+    radioAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = radioAudioCtx.createMediaStreamSource(new MediaStream([rawAudioTrack]));
+    
+    // 1. Bandpass-Filter (Schneidet Bässe und Höhen ab -> Telefon/Funkgerät-Klang)
+    const bandpass = radioAudioCtx.createBiquadFilter();
+    bandpass.type = "bandpass";
+    bandpass.frequency.value = 1200; // Mitten-Fokus
+    bandpass.Q.value = 1.0;          // Bandbreite
+
+    // 2. Leichte Verzerrung (WaveShaper)
+    const distortion = radioAudioCtx.createWaveShaper();
+    distortion.curve = makeDistortionCurve(15); // Nicht zu extrem, man soll dich noch verstehen
+    distortion.oversample = '4x';
+
+    // 3. Gain (Lautstärke etwas anheben, da Bandpass leiser macht)
+    const gain = radioAudioCtx.createGain();
+    gain.gain.value = 1.5;
+
+    const dest = radioAudioCtx.createMediaStreamDestination();
+
+    // Verkabeln
+    source.connect(bandpass);
+    bandpass.connect(distortion);
+    distortion.connect(gain);
+    gain.connect(dest);
+
+    radioAudioTrack = dest.stream.getAudioTracks()[0];
+}
+
+// Toggle-Logik
+document.getElementById("radioBtn").onclick = () => {
+    // Check, ob Uplink da ist
+    if (!localStream || !localStream.getAudioTracks()[0]) {
+        if(typeof showToast === "function") showToast("ACTIVATE CAMERA FIRST!", "error");
+        return;
+    }
+
+    // Wenn noch nicht initialisiert, jetzt machen
+    if (!radioAudioTrack) initRadioFilter();
+
+    isRadioActive = !isRadioActive;
+    
+    // UI Update
+    document.getElementById("radioBtn").classList.toggle("active", isRadioActive);
+    
+    // Welcher Track soll gesendet werden?
+    const trackToSend = isRadioActive ? radioAudioTrack : rawAudioTrack;
+
+    // 1. Lokalen Stream updaten (wichtig für die Aufnahme / Mission Log!)
+    localStream.removeTrack(localStream.getAudioTracks()[0]);
+    localStream.addTrack(trackToSend);
+
+    // 2. WebRTC-Peers updaten (damit die anderen dich verzerrt hören)
+    for (let id in peers) {
+        const sender = peers[id].getSenders().find(s => s.track.kind === 'audio');
+        if (sender) sender.replaceTrack(trackToSend);
+    }
+
+    // Sound-Feedback (typisches Walkie-Talkie "Klick")
+    const radioClick = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
+    radioClick.volume = 0.5;
+    radioClick.play().catch(()=>{});
+
+    showToast(isRadioActive ? "COMMS: MILITARY RADIO ENABLED" : "COMMS: STANDARD AUDIO");
+};

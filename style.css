@@ -309,3 +309,35 @@ body {
 .config-scroll-area::-webkit-scrollbar { width: 4px; }
 .config-scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
 .config-scroll-area::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 2px; }
+
+/* --- UPGRADE: CRT MONITOR & GLITCH FX --- */
+
+/* 1. Chromatische Aberration (RGB-Split) für Titel */
+.neon-text-cyan, .brand-title, .modal-title, .boot-text {
+    text-shadow: 2px 0 0 rgba(255,0,0,0.6), -2px 0 0 rgba(0,0,255,0.6), 0 0 10px var(--neon-cyan) !important;
+}
+
+/* 2. Glitch Hover-Klasse für Buttons */
+.glitch-btn {
+    position: relative;
+}
+.glitch-btn:hover {
+    animation: glitch-anim 0.2s cubic-bezier(.25, .46, .45, .94) both;
+}
+
+@keyframes glitch-anim {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); filter: drop-shadow(2px 0 0 rgba(255,0,0,0.8)); }
+    40% { transform: translate(-2px, -2px); filter: drop-shadow(-2px 0 0 rgba(0,255,255,0.8)); }
+    60% { transform: translate(2px, 2px); filter: drop-shadow(2px 0 0 rgba(255,0,255,0.8)); }
+    80% { transform: translate(2px, -2px); filter: drop-shadow(-2px 0 0 rgba(255,0,0,0.8)); }
+    100% { transform: translate(0); filter: none; }
+}
+
+/* Radio Button Aktiv-Status */
+#radioBtn.active {
+    background: rgba(0, 245, 255, 0.2);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 15px var(--neon-cyan);
+    border: 1px solid var(--neon-cyan);
+}

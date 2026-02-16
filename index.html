@@ -30,7 +30,7 @@
         <div class="login-box">
             <input id="usernameInput" type="text" placeholder="Dein Name..." autocomplete="off" />
             <input id="passwordInput" type="password" placeholder="Passwort..." />
-            <button id="loginBtn" type="button">Anmelden</button>
+            <button id="loginBtn" class="glitch-btn" type="button">Anmelden</button>
             <div id="loginError"></div>
         </div>
     </div>
@@ -48,8 +48,8 @@
         <div class="sidebar-header">
             <img src="favicon.png" class="main-logo" alt="Main Logo">
             <h1 class="brand-title">UpZocker's Room</h1>
-            <button id="inviteBtn" class="settings-trigger" title="Copy Invite Link" style="margin-left: 5px;"><i class="fas fa-share-alt"></i></button>
-            <button id="configBtn" class="settings-trigger" title="System Configuration"><i class="fas fa-cog"></i></button>
+            <button id="inviteBtn" class="settings-trigger glitch-btn" title="Copy Invite Link" style="margin-left: 5px;"><i class="fas fa-share-alt"></i></button>
+            <button id="configBtn" class="settings-trigger glitch-btn" title="System Configuration"><i class="fas fa-cog"></i></button>
         </div>
 
         <div id="configPanel" class="popup-window" style="display:none;">
@@ -61,6 +61,9 @@
                 
                 <label style="color:#00f5ff; font-size:0.9em;">CRYO STASIS (AFK):</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyAfk" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">RADIO FILTER (FUNK):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyRadio" class="hotkey-capture" readonly placeholder="Key..."></div>
                 
                 <label style="color:#00f5ff; font-size:0.9em;">MIKROFON (MUTE):</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyMute" class="hotkey-capture" readonly placeholder="Key..."></div>
@@ -82,7 +85,7 @@
         </div>
 
         <hr class="divider">
-        <button id="createRoomBtn"><i class="fas fa-plus"></i> Neuer Raum</button>
+        <button id="createRoomBtn" class="glitch-btn"><i class="fas fa-plus"></i> Neuer Raum</button>
         
         <div class="sidebar-label">RÄUME:</div>
         <div id="roomList"></div>
@@ -96,7 +99,7 @@
         <div id="videoChatSection">
             <div id="videoGrid">
                 <div id="videoPlaceholder">
-                    <button id="initVideoBtn" class="big-start-btn">
+                    <button id="initVideoBtn" class="big-start-btn glitch-btn">
                         <i class="fas fa-power-off"></i> Kamera-Uplink starten
                     </button>
                 </div>
@@ -106,13 +109,14 @@
             <video id="pipVideo" autoplay muted style="display:none;"></video>
             
             <div id="videoControls" style="display:none;">
-                <button id="afkBtn" class="ctrl" title="Cryo-Stasis (AFK)"><i class="fas fa-snowflake"></i></button>
-                <button id="muteBtn" class="ctrl" title="Mikrofon"><i class="fas fa-microphone"></i></button>
-                <button id="recordBtn" class="ctrl" title="Mission Log (REC)"><i class="fas fa-circle"></i></button>
-                <button id="cameraBtn" class="ctrl" title="Kamera"><i class="fas fa-video"></i></button>
-                <button id="shareBtn" class="ctrl desktop-only" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
-                <button id="popoutBtn" class="ctrl desktop-only" title="Popout Modus"><i class="fas fa-th-large"></i></button>
-                <button id="expandBtn" class="ctrl" title="Vollbild"><i class="fas fa-expand"></i></button>
+                <button id="afkBtn" class="ctrl glitch-btn" title="Cryo-Stasis (AFK)"><i class="fas fa-snowflake"></i></button>
+                <button id="muteBtn" class="ctrl glitch-btn" title="Mikrofon"><i class="fas fa-microphone"></i></button>
+                <button id="radioBtn" class="ctrl glitch-btn" title="Military Radio Filter"><i class="fas fa-headset"></i></button>
+                <button id="recordBtn" class="ctrl glitch-btn" title="Mission Log (REC)"><i class="fas fa-circle"></i></button>
+                <button id="cameraBtn" class="ctrl glitch-btn" title="Kamera"><i class="fas fa-video"></i></button>
+                <button id="shareBtn" class="ctrl desktop-only glitch-btn" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
+                <button id="popoutBtn" class="ctrl desktop-only glitch-btn" title="Popout Modus"><i class="fas fa-th-large"></i></button>
+                <button id="expandBtn" class="ctrl glitch-btn" title="Vollbild"><i class="fas fa-expand"></i></button>
             </div>
         </div>
     </div>
@@ -120,7 +124,7 @@
     <div id="chatSection">
         <div id="chatHeaderMobile">
             <span>Kommunikations-Log</span>
-            <button id="closeChatMobile"><i class="fas fa-times"></i></button>
+            <button id="closeChatMobile"><i class="fas fa-times glitch-btn"></i></button>
         </div>
         
         <div id="chatBox"></div>
@@ -128,11 +132,11 @@
 
         <div id="emojiPicker" class="emoji-picker" style="display:none;">
             <div class="emoji-tabs">
-                <button class="tab-btn active" data-cat="faces">😊</button>
-                <button class="tab-btn" data-cat="gestures">👌</button>
-                <button class="tab-btn" data-cat="tech">🎮</button>
-                <button class="tab-btn" data-cat="animals">🐱</button>
-                <button class="tab-btn" data-cat="misc">💖</button>
+                <button class="tab-btn active glitch-btn" data-cat="faces">😊</button>
+                <button class="tab-btn glitch-btn" data-cat="gestures">👌</button>
+                <button class="tab-btn glitch-btn" data-cat="tech">🎮</button>
+                <button class="tab-btn glitch-btn" data-cat="animals">🐱</button>
+                <button class="tab-btn glitch-btn" data-cat="misc">💖</button>
             </div>
             <div id="emojiGrid" class="emoji-grid"></div>
         </div>
@@ -140,22 +144,22 @@
         <div id="soundBoard" class="sound-board" style="display:none;">
             <div class="sb-title">AUDIO FX</div>
             <div class="sb-grid">
-                <button class="sb-btn" data-sound="sfx1">📢 Horn</button>
-                <button class="sb-btn" data-sound="sfx2">🏆 Win</button>
-                <button class="sb-btn" data-sound="sfx3">🔫 Laser</button>
-                <button class="sb-btn" data-sound="sfx4">❌ Fail</button>
+                <button class="sb-btn glitch-btn" data-sound="sfx1">📢 Horn</button>
+                <button class="sb-btn glitch-btn" data-sound="sfx2">🏆 Win</button>
+                <button class="sb-btn glitch-btn" data-sound="sfx3">🔫 Laser</button>
+                <button class="sb-btn glitch-btn" data-sound="sfx4">❌ Fail</button>
             </div>
         </div>
 
         <div id="chatInputArea">
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <button id="emojiBtn" class="chat-action-btn" type="button">😊</button>
-                <button id="soundBtn" class="chat-action-btn" type="button"><i class="fas fa-music"></i></button> 
-                <button id="fileBtn" class="chat-action-btn" type="button"><i class="fas fa-paperclip"></i></button>
+                <button id="emojiBtn" class="chat-action-btn glitch-btn" type="button">😊</button>
+                <button id="soundBtn" class="chat-action-btn glitch-btn" type="button"><i class="fas fa-music"></i></button> 
+                <button id="fileBtn" class="chat-action-btn glitch-btn" type="button"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="fileInput" style="display:none;">
                 <input type="text" id="messageInput" placeholder="Nachricht..." autocomplete="off">
             </div>
-            <button id="sendBtn">Senden</button>
+            <button id="sendBtn" class="glitch-btn">Senden</button>
         </div>
     </div>
 </div>
@@ -169,8 +173,8 @@
         <div class="modal-body">
             <input type="text" id="newRoomInput" placeholder="Enter sector name..." autocomplete="off">
             <div class="modal-buttons">
-                <button id="cancelModalBtn" class="modal-btn cancel">ABORT</button>
-                <button id="confirmModalBtn" class="modal-btn confirm">CREATE</button>
+                <button id="cancelModalBtn" class="modal-btn cancel glitch-btn">ABORT</button>
+                <button id="confirmModalBtn" class="modal-btn confirm glitch-btn">CREATE</button>
             </div>
         </div>
     </div>
