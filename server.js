@@ -5,6 +5,13 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 }); // 10MB Buffer für Datei-Uploads
+const path = require('path'); // Falls 'path' oben noch nicht importiert ist
+
+// Statische Ordner registrieren
+app.use(express.static('public')); // Dein normaler Web-Ordner
+
+// NEU & SICHER: Den Downloads-Ordner explizit freigeben
+app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
 
 const STATION_PASSWORD = "UpZocker2026";
 let users = {};
