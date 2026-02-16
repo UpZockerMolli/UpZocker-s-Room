@@ -469,8 +469,19 @@ function playSoundLocal(sid) { const audio = document.getElementById(sid); if(au
 socket.on("play-sound", (sid) => playSoundLocal(sid));
 
 document.addEventListener('click', (e) => {
-    if (emojiPicker.style.display === "flex" && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) emojiPicker.style.display = "none";
-    if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) soundBoard.style.display = "none";
+    // Emojis schließen
+    if (emojiPicker.style.display === "flex" && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
+        emojiPicker.style.display = "none";
+    }
+    // Soundboard schließen
+    if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) {
+        soundBoard.style.display = "none";
+    }
+    // NEU: Config-Panel schließen
+    const configBtn = document.getElementById("configBtn");
+    if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtn.contains(e.target)) {
+        configPanel.style.display = "none";
+    }
 });
 
 // --- WEBRTC ---
@@ -492,7 +503,7 @@ document.getElementById("configBtn").onclick = () => configPanel.style.display =
 
 // Definition aller Hotkeys und deren Ziel-Buttons
 const hotkeys = {
-    rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "F9", current: "" },
+    rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
     radio:  { id: "hotkeyRadio",  btn: "radioBtn",   default: "",   current: "" },
     afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
     mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },

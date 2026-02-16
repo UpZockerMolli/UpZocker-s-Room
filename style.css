@@ -21,8 +21,8 @@ body {
     
     /* Grid Background Animation */
     background-image: 
-        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0, 245, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.15) 1px, transparent 1px);
     background-size: 40px 40px;
     animation: bgScroll 20s linear infinite;
 }
