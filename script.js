@@ -722,35 +722,97 @@ function toggleRecordingState() {
 }
 
 function startRecordingProcess() {
-    if (!globalScreenStream) return;
+    // 1. Abbruch, falls kein Bildschirm-Uplink vorhanden ist
+    if (!globalScreenStream) {
+        showToast("ERROR: NO UPLINK FOR RECORDING", "error");
+        return;
+    }
+
     recordedChunks = [];
+
+    // 2. Audio-Mixer (AudioContext) initialisieren
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // WICHTIG: Electron/Chrome blockiert Audio oft, bis dieser Befehl kommt
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+
     const dest = audioCtx.createMediaStreamDestination();
+    let hasAudio = false;
 
-    if (globalScreenStream.getAudioTracks().length > 0) {
-        const sysSource = audioCtx.createMediaStreamSource(new MediaStream(globalScreenStream.getAudioTracks()));
+    // --- SPUR 1: SYSTEM-SOUND (Spiel/Desktop) ---
+    const screenAudioTracks = globalScreenStream.getAudioTracks();
+    if (screenAudioTracks.length > 0) {
+        const sysSource = audioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
         const sysGain = audioCtx.createGain();
-        sysGain.gain.value = 0.7; 
-        sysSource.connect(sysGain); sysGain.connect(dest);
+        sysGain.gain.value = 0.6; // System-Sound etwas leiser, damit man dich hört
+        sysSource.connect(sysGain);
+        sysGain.connect(dest);
+        hasAudio = true;
+        console.log("🔊 Aufnahme: System-Audio verbunden");
     }
+
+    // --- SPUR 2: MIKROFON (Deine Stimme) ---
     if (localStream && localStream.getAudioTracks().length > 0) {
-        const micSource = audioCtx.createMediaStreamSource(localStream);
-        const micGain = audioCtx.createGain();
-        micGain.gain.value = 5.0; 
-        micSource.connect(micGain); micGain.connect(dest);
+        const currentMicTrack = localStream.getAudioTracks()[0];
+        
+        if (currentMicTrack.readyState === 'live') {
+            const micSource = audioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
+            const micGain = audioCtx.createGain();
+            
+            // BOOST: Mikrofon deutlich lauter stellen für die Aufnahme
+            micGain.gain.value = 2.0; 
+            
+            micSource.connect(micGain);
+            micGain.connect(dest);
+            hasAudio = true;
+            console.log("🎤 Aufnahme: Mikrofon-Spur aktiv verbunden");
+        }
     }
 
-    const combinedStream = new MediaStream([globalScreenStream.getVideoTracks()[0], dest.stream.getAudioTracks()[0]]);
-    try { mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9,opus' }); } 
-    catch (e) { mediaRecorder = new MediaRecorder(combinedStream); }
+    // --- KOMBINATION: Video + Mix-Audio ---
+    const tracks = [globalScreenStream.getVideoTracks()[0]];
+    if (hasAudio) {
+        tracks.push(dest.stream.getAudioTracks()[0]);
+    }
 
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-    mediaRecorder.onstop = () => { saveFile(); audioCtx.close(); };
-    mediaRecorder.start();
+    const combinedStream = new MediaStream(tracks);
+    
+    // Beste verfügbare Qualität wählen
+    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
+                    ? { mimeType: 'video/webm;codecs=vp9,opus' } 
+                    : { mimeType: 'video/webm' };
 
-    recBtn.classList.add("recording");
-    recBtn.style = "";
-    new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
+    try { 
+        mediaRecorder = new MediaRecorder(combinedStream, options); 
+        
+        mediaRecorder.ondataavailable = (e) => { 
+            if (e.data.size > 0) recordedChunks.push(e.data); 
+        };
+
+        mediaRecorder.onstop = () => { 
+            saveFile(); 
+            audioCtx.close(); // Ressourcen freigeben
+        };
+
+        // Startet die Aufnahme (Datenpakete alle 1 Sekunde)
+        mediaRecorder.start(1000); 
+
+        // UI-Update
+        recBtn.classList.add("recording");
+        recBtn.style.color = "#ff0000"; // Leuchtend Rot während der Aufnahme
+        recBtn.style.borderColor = "#ff0000";
+        recBtn.style.boxShadow = "0 0 15px #ff0000";
+
+        // Akustisches Feedback
+        new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
+        showToast("MISSION LOG: RECORDING STARTED");
+
+    } catch (err) { 
+        console.error("MediaRecorder konnte nicht gestartet werden:", err);
+        showToast("ERROR: RECORDER FAILED", "error");
+    }
 }
 
 function saveFile() {
