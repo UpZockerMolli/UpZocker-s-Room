@@ -1,36 +1,50 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 });
+const io = new Server(server, { maxHttpBufferSize: 1e7 }); // 10MB Buffer für Datei-Uploads
 
 const STATION_PASSWORD = "UpZocker2026";
-let users = {}, rooms = ["Lobby"];
+let users = {};
+let rooms = ["Lobby"];
 
 app.use(express.static(__dirname));
 
 io.on("connection", socket => {
+    
+    // --- AUTHENTICATION ---
     socket.on("login", ({ username, password }) => {
-        if (password !== STATION_PASSWORD) return socket.emit("login-error", "Falsches Passwort!");
-        socket.username = username; socket.authenticated = true;
+        if (password !== STATION_PASSWORD) return socket.emit("login-error", "Zugriff verweigert: Falsches Passwort!");
+        
+        socket.username = username; 
+        socket.authenticated = true;
+        socket.room = "Lobby";
         users[socket.id] = { username, room: "Lobby" };
+        
+        socket.join("Lobby"); // Wichtig: User muss technisch dem Raum beitreten
         socket.emit("login-success");
-        // Notify als System Message & Toast
-        io.emit("notify", `${username} ist online.`);
+        
+        io.emit("notify", `[SYSTEM]: ${username} ist dem Netzwerk beigetreten.`);
         updateAll();
     });
 
-    // RAUM BETRETEN (Vereinfacht)
+    // --- ROOM MANAGEMENT ---
+    
+    // Raum betreten (Wechseln)
     socket.on("join", ({ room }) => {
         if (!socket.authenticated) return;
+        
         const oldRoom = socket.room;
         
+        // Alten Raum verlassen
         if(oldRoom) {
             socket.leave(oldRoom);
             io.to(oldRoom).emit("user-left", socket.id);
         }
 
+        // Neuen Raum betreten
         socket.join(room);
         socket.room = room;
         users[socket.id].room = room;
@@ -38,25 +52,24 @@ io.on("connection", socket => {
         io.emit("notify", `[SYSTEM]: ${socket.username} verlegt in Sektor [${room}].`);
         updateAll();
     });
-    // NEU: Nur Raum erstellen (ohne beitreten)
+
+    // Raum erstellen
     socket.on("create-room", (roomName) => {
-        if (!roomName || rooms.includes(roomName)) return; // Gibts schon oder leer
+        if (!roomName || rooms.includes(roomName)) return; 
         
         rooms.push(roomName);
         io.emit("notify", `[SYSTEM]: Neuer Sektor [${roomName}] wurde initialisiert.`);
         updateAll();
     });
 
-    // NEU: Raum löschen
+    // Raum löschen & User verschieben
     socket.on("delete-room", (roomName) => {
-        // Lobby darf niemals gelöscht werden
-        if (roomName === "Lobby") return;
+        if (roomName === "Lobby") return; // Lobby ist unzerstörbar
 
-        // 1. Aus Liste entfernen
+        // 1. Raum aus Liste entfernen
         rooms = rooms.filter(r => r !== roomName);
 
         // 2. Alle User in diesem Raum zwangsweise in die Lobby verschieben
-        // Wir suchen alle Sockets in diesem Raum
         const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
         if (socketsInRoom) {
             for (const clientId of socketsInRoom) {
@@ -66,7 +79,7 @@ io.on("connection", socket => {
                     clientSocket.join("Lobby");
                     clientSocket.room = "Lobby";
                     if (users[clientId]) users[clientId].room = "Lobby";
-                    clientSocket.emit("force-lobby"); // Signal an Client (optional)
+                    clientSocket.emit("force-lobby"); // Client UI informieren
                 }
             }
         }
@@ -75,11 +88,12 @@ io.on("connection", socket => {
         updateAll();
     });
 
+    // --- COMMUNICATION & FEATURES ---
+
     socket.on("chat-message", data => {
-        io.to(socket.room).emit("chat-message", { ...data, user: socket.username });
+        if(socket.room) io.to(socket.room).emit("chat-message", { ...data, user: socket.username });
     });
 
-    // --- TYPING EVENTS ---
     socket.on("typing", () => {
         if(socket.room) socket.to(socket.room).emit("user-typing", socket.username);
     });
@@ -88,42 +102,43 @@ io.on("connection", socket => {
         if(socket.room) socket.to(socket.room).emit("user-stop-typing");
     });
 
-    // --- SOUNDBOARD EVENT ---
     socket.on("play-sound", (soundId) => {
-        // Sende Sound an alle im Raum (außer an mich selbst, ich spiele ihn lokal)
         if(socket.room) socket.to(socket.room).emit("play-sound", soundId);
     });
-        // AFK Status weiterleiten
+
     socket.on("toggle-afk", (isAfk) => {
-        if(socket.room) {
-            // Sende an alle anderen im Raum, wer AFK ist und ob an/aus
-            socket.to(socket.room).emit("user-afk", { id: socket.id, isAfk: isAfk });
-        }
+        if(socket.room) socket.to(socket.room).emit("user-afk", { id: socket.id, isAfk: isAfk });
     });
 
-    // --- VIDEO EVENTS ---
-    socket.on("ready-for-video", () => socket.to(socket.room).emit("user-ready", { id: socket.id, name: socket.username }));
+    // --- WEBRTC SIGNALING (VIDEO) ---
+    
+    socket.on("ready-for-video", () => {
+        if(socket.room) socket.to(socket.room).emit("user-ready", { id: socket.id, name: socket.username });
+    });
+    
     socket.on("offer", d => io.to(d.to).emit("offer", { offer: d.offer, from: socket.id, name: d.name }));
     socket.on("answer", d => io.to(d.to).emit("answer", { answer: d.answer, from: socket.id }));
     socket.on("ice", d => io.to(d.to).emit("ice", { candidate: d.candidate, from: socket.id }));
 
+    // --- DISCONNECT ---
     socket.on("disconnect", () => {
         if (users[socket.id]) {
             const { room, username } = users[socket.id];
             
-            // NEU: Dem Raum sagen, dass diese ID weg ist (damit das Video gelöscht wird)
+            // Video-Feed sauber entfernen
             io.to(room).emit("user-left", socket.id);
             
             delete users[socket.id];
-            io.emit("notify", `${username} ist offline.`);
+            io.emit("notify", `${username} Verbindung unterbrochen.`);
             updateAll();
         }
     });
 
+    // Helper: Sendet aktuelle Listen an alle
     function updateAll() {
         io.emit("update-data", { rooms, users: Object.values(users) });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Station läuft auf Port " + PORT));
+server.listen(PORT, () => console.log(`>> STATION ONLINE ON PORT ${PORT}`));

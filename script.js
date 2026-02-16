@@ -485,29 +485,83 @@ socket.on("user-left", (id) => {
     updateGridStyle();
 });
 
-// --- RECORDING & HOTKEYS ---
+// --- DYNAMIC HOTKEY SYSTEM ---
 const recBtn = document.getElementById("recordBtn");
 const configPanel = document.getElementById("configPanel");
-const hotkeyInput = document.getElementById("hotkeyInput");
-let currentHotkey = localStorage.getItem("recHotkey") || "F9";
-hotkeyInput.value = currentHotkey;
-
 document.getElementById("configBtn").onclick = () => configPanel.style.display = configPanel.style.display === "none" ? "block" : "none";
-hotkeyInput.addEventListener("keydown", (e) => { e.preventDefault(); hotkeyInput.value = e.key; });
-document.getElementById("saveConfigBtn").onclick = () => {
-    currentHotkey = hotkeyInput.value;
-    localStorage.setItem("recHotkey", currentHotkey);
-    configPanel.style.display = "none";
-    showToast(`CONFIG UPDATED: [ ${currentHotkey} ]`);
+
+// Definition aller Hotkeys und deren Ziel-Buttons
+const hotkeys = {
+    rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "F9", current: "" },
+    afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
+    mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },
+    cam:    { id: "hotkeyCam",    btn: "cameraBtn",  default: "",   current: "" },
+    share:  { id: "hotkeyShare",  btn: "shareBtn",   default: "",   current: "" },
+    pip:    { id: "hotkeyPip",    btn: "popoutBtn",  default: "",   current: "" },
+    expand: { id: "hotkeyExpand", btn: "expandBtn",  default: "",   current: "" }
 };
 
-document.addEventListener("keydown", (e) => {
-    if (["messageInput", "usernameInput", "passwordInput"].includes(document.activeElement.id)) return;
-    if (e.key.toLowerCase() === currentHotkey.toLowerCase()) {
+// 1. Laden aus dem LocalStorage
+Object.keys(hotkeys).forEach(key => {
+    const stored = localStorage.getItem(`hotkey_${key}`);
+    hotkeys[key].current = stored !== null ? stored : hotkeys[key].default;
+    const inputEl = document.getElementById(hotkeys[key].id);
+    if (inputEl) inputEl.value = hotkeys[key].current;
+});
+
+// 2. Eingabe-Logik für alle Input-Felder
+document.querySelectorAll(".hotkey-capture").forEach(input => {
+    input.addEventListener("keydown", (e) => {
         e.preventDefault();
-        if (globalScreenStream && globalScreenStream.active) toggleRecordingState();
-        else showToast("ERROR: UPLINK REQUIRED", "error");
-    }
+        // Mit Backspace oder Escape kann man einen Hotkey wieder löschen
+        if (e.key === "Escape" || e.key === "Backspace") {
+            input.value = "";
+        } else {
+            input.value = e.key;
+        }
+    });
+});
+
+// 3. Speichern aller Hotkeys
+document.getElementById("saveConfigBtn").onclick = () => {
+    Object.keys(hotkeys).forEach(key => {
+        const inputEl = document.getElementById(hotkeys[key].id);
+        if (inputEl) {
+            hotkeys[key].current = inputEl.value;
+            localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
+        }
+    });
+    configPanel.style.display = "none";
+    showToast("SYSTEM CONFIG UPDATED");
+};
+
+// 4. Globaler Listener (Führt die Aktionen aus)
+document.addEventListener("keydown", (e) => {
+    // Ignorieren, wenn wir im Chat tippen, einen Raum erstellen oder gerade einen Hotkey belegen
+    if (["messageInput", "usernameInput", "passwordInput", "newRoomInput"].includes(document.activeElement.id) || 
+        document.activeElement.classList.contains("hotkey-capture")) return;
+
+    const pressedKey = e.key.toLowerCase();
+
+    // Alle konfigurierten Hotkeys durchgehen
+    Object.keys(hotkeys).forEach(key => {
+        if (hotkeys[key].current && pressedKey === hotkeys[key].current.toLowerCase()) {
+            e.preventDefault();
+
+            // Sonderfall: Recording (braucht Uplink-Check)
+            if (key === "rec") {
+                if (globalScreenStream && globalScreenStream.active) {
+                    toggleRecordingState();
+                } else {
+                    showToast("ERROR: UPLINK REQUIRED", "error");
+                }
+            } else {
+                // Normaler Fall: Simuliere einen Mausklick auf den entsprechenden Button
+                const targetBtn = document.getElementById(hotkeys[key].btn);
+                if (targetBtn) targetBtn.click();
+            }
+        }
+    });
 });
 
 recBtn.onclick = async () => {

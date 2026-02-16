@@ -54,11 +54,29 @@
 
         <div id="configPanel" class="popup-window" style="display:none;">
             <div class="sb-title">SYSTEM CONFIG</div>
-            <div style="padding: 15px; display: flex; flex-direction: column; gap: 10px;">
-                <label style="color:#00f5ff; font-size:0.9em;">REC HOTKEY:</label>
-                <div class="hotkey-input-wrapper">
-                    <input type="text" id="hotkeyInput" readonly placeholder="Press any key..." value="F9">
-                </div>
+            <div class="config-scroll-area" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
+                
+                <label style="color:#00f5ff; font-size:0.9em;">MISSION LOG (REC):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyRec" class="hotkey-capture" readonly placeholder="Key..." value="F9"></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">CRYO STASIS (AFK):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyAfk" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">MIKROFON (MUTE):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyMute" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">KAMERA (ON/OFF):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyCam" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">BILDSCHIRM TEILEN:</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyShare" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">POPOUT (PIP):</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyPip" class="hotkey-capture" readonly placeholder="Key..."></div>
+                
+                <label style="color:#00f5ff; font-size:0.9em;">VOLLBILD:</label>
+                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyExpand" class="hotkey-capture" readonly placeholder="Key..."></div>
+
                 <button id="saveConfigBtn" class="sb-btn" style="margin-top:10px;">SAVE CONFIG</button>
             </div>
         </div>
@@ -142,7 +160,7 @@
     </div>
 </div>
 
-<div id="systemSignature">SYSTEM v1.0 // BUILD BY UPZOCKER'S MOLLI</div>
+<div id="systemSignature">SYSTEM v3.5 // BUILD BY UPZOCKER'S MOLLI</div>
 <div id="toastContainer"></div>
 
 <div id="customModal" class="modal-overlay" style="display:none;">
