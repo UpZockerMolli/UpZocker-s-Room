@@ -38,7 +38,7 @@
 </div>
 
 <div id="appContainer" style="display:none;">
-    
+  
     <div id="mobileHeader">
         <button id="mobileMenuBtn"><i class="fas fa-bars"></i></button>
         <span class="mobile-brand">UpZocker's Room</span>
@@ -101,6 +101,11 @@
     </div>
 
     <div id="mainSection">
+        <div id="telemetryBar">
+            <div><span class="tel-label">SYS.TIME:</span> <span id="localTimeDisplay">00:00:00</span></div>
+            <div class="tel-divider">//</div>
+            <div><span class="tel-label">SECTOR UPTIME:</span> <span id="uptimeDisplay">00:00:00</span></div>
+        </div>
         <div id="videoChatSection">
             <div id="videoGrid">
                 <div id="videoPlaceholder">
@@ -184,6 +189,11 @@
         </div>
     </div>
 </div>
+
+<div id="imageLightbox" class="lightbox-overlay" style="display:none;">
+        <span class="close-lightbox">&times;</span>
+        <img class="lightbox-content" id="lightboxImg" src="">
+    </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>

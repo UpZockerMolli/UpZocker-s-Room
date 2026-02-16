@@ -132,6 +132,7 @@ socket.on("update-data", ({ rooms: roomList, users: userList }) => {
         btn.onclick = () => {
              if (r !== currentRoom) {
                  currentRoom = r;
+                 roomStartTime = Date.now(); // <-- NEU: Timer resetten!
                  socket.emit("join", { room: r });
              }
         };
@@ -426,10 +427,33 @@ socket.on("chat-message", d => {
     div.className = `chat-msg ${isMe ? 'mine' : 'theirs'}`;
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const userColor = isMe ? 'neon-text-pink' : 'neon-text-cyan';
-    let content = d.type === "file" ? `<a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName}</a>` : d.text;
+    
+    let content = "";
+    
+    if (d.type === "file") {
+        // --- NEU: Prüfen, ob die Datei ein Bild ist ---
+        if (d.data.startsWith("data:image/")) {
+            // Zeige es als klickbares Bild im Chat an (ruft jetzt openLightbox auf!)
+            content = `
+            <div class="chat-image-wrapper">
+                <img src="${d.data}" class="chat-inline-img clickable" alt="${d.fileName}" onclick="openLightbox('${d.data}')" title="Großansicht">
+                
+                <a href="${d.data}" download="${d.fileName}" class="file-msg" style="font-size:0.8em; padding:3px; display:inline-block; margin-top: 5px;">
+                    <i class="fas fa-file-download"></i> ${d.fileName} speichern
+                </a>
+            </div>`;
+        } else {
+            // Normaler Datei-Download für alles andere (z.B. PDFs, Zips)
+            content = `<a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName}</a>`;
+        }
+    } else {
+        content = d.text;
+    }
+
     div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
     b.appendChild(div);
     b.scrollTop = b.scrollHeight;
+    
     if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
 });
 
@@ -901,4 +925,60 @@ window.addEventListener('appinstalled', () => {
     console.log('PWA was installed');
     if (installBtn) installBtn.style.display = 'none';
     showToast("STATION APP INSTALLED SUCCESSFULLY");
+});
+
+// --- UPGRADE: MISSION CLOCK & TELEMETRY ---
+let roomStartTime = Date.now();
+
+// Uhr & Timer aktualisieren
+setInterval(() => {
+    const now = new Date();
+    
+    // 1. Lokale Uhrzeit (SYS.TIME)
+    const timeStr = now.toLocaleTimeString('de-DE', { hour12: false });
+    const localTimeEl = document.getElementById("localTimeDisplay");
+    if (localTimeEl) localTimeEl.innerText = timeStr;
+
+    // 2. Mission Uptime
+    const diffSeconds = Math.floor((now - roomStartTime) / 1000);
+    const hrs = String(Math.floor(diffSeconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((diffSeconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(diffSeconds % 60).padStart(2, '0');
+    
+    const uptimeEl = document.getElementById("uptimeDisplay");
+    if (uptimeEl) uptimeEl.innerText = `${hrs}:${mins}:${secs}`;
+}, 1000); // Jede Sekunde
+
+// Uptime Resetten, wenn wir den Raum wechseln oder in die Lobby gezwungen werden
+socket.on("join", () => { roomStartTime = Date.now(); });
+socket.on("force-lobby", () => { roomStartTime = Date.now(); });
+
+// --- UPGRADE: LIGHTBOX / IMAGE VIEWER ---
+const lightbox = document.getElementById('imageLightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const closeLightboxBtn = document.querySelector('.close-lightbox');
+
+// Funktion zum Öffnen (wird direkt im HTML-String des Chats aufgerufen)
+// Wir machen sie global verfügbar (window.), damit der onclick-Handler im HTML sie findet.
+window.openLightbox = (src) => {
+    lightboxImg.src = src;
+    lightbox.style.display = 'flex'; // Flex zentriert den Inhalt automatisch
+};
+
+// Schließen-Logik
+if (closeLightboxBtn) {
+    closeLightboxBtn.onclick = () => lightbox.style.display = 'none';
+}
+
+// Klick auf den dunklen Hintergrund schließt auch
+lightbox.onclick = (e) => {
+    // Nur schließen, wenn man auf den Hintergrund klickt, nicht auf das Bild selbst
+    if (e.target === lightbox) lightbox.style.display = 'none';
+};
+
+// Escape-Taste schließt auch (Komfort-Funktion)
+document.addEventListener('keydown', (e) => {
+   if(e.key === "Escape" && lightbox.style.display === 'flex') {
+       lightbox.style.display = 'none';
+   }
 });
