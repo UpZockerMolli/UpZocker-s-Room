@@ -857,3 +857,37 @@ document.getElementById("radioBtn").onclick = () => {
 
     showToast(isRadioActive ? "COMMS: MILITARY RADIO ENABLED" : "COMMS: STANDARD AUDIO");
 };
+
+// --- PWA INSTALLATION LOGIC ---
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Verhindert, dass der Browser seinen eigenen kleinen Banner anzeigt
+    e.preventDefault();
+    // Speichert das Event für später
+    deferredPrompt = e;
+    // Zeigt deinen Cyberpunk-Download-Button an
+    if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        // Zeigt den Installations-Dialog
+        deferredPrompt.prompt();
+        // Warte auf die Entscheidung des Nutzers
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        // Prompt ist verbraucht
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+    });
+}
+
+// Prüfen, ob die App bereits installiert ist
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    if (installBtn) installBtn.style.display = 'none';
+    showToast("STATION APP INSTALLED SUCCESSFULLY");
+});

@@ -1,0 +1,21 @@
+{
+  "short_name": "UpZocker",
+  "name": "UpZocker's Command Center",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#05070d",
+  "theme_color": "#00f5ff",
+  "display": "standalone",
+  "orientation": "landscape"
+}
