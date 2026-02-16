@@ -224,25 +224,52 @@ document.getElementById("expandBtn").onclick = () => {
     !document.fullscreenElement ? s.requestFullscreen().catch(()=>{}) : document.exitFullscreen(); 
 };
 
-// Screen Share
+// Screen Share (TOGGLE-FUNKTION)
+let activeScreenTrack = null; // Speichert den aktuellen Screen-Share
+
 document.getElementById("shareBtn").onclick = async () => { 
+    
+    // 1. PRÜFUNG: Teilen wir bereits den Bildschirm?
+    if (activeScreenTrack && activeScreenTrack.readyState === "live") {
+        // Manuell stoppen -> Löst automatisch die Rückkehr zur Webcam (onended) aus!
+        activeScreenTrack.stop();
+        activeScreenTrack.dispatchEvent(new Event('ended')); 
+        return;
+    }
+
+    // 2. NORMALER START: Bildschirm auswählen
     try { 
         const s = await navigator.mediaDevices.getDisplayMedia({video:true}); 
-        const t = s.getVideoTracks()[0]; 
+        activeScreenTrack = s.getVideoTracks()[0]; 
+        
+        // Den Jungs das Bildschirm-Video schicken
         for(let i in peers){ 
-            const se = peers[i].getSenders().find(x=>x.track.kind==='video'); 
-            if(se) se.replaceTrack(t); 
+            const se = peers[i].getSenders().find(x => x.track.kind === 'video'); 
+            if(se) se.replaceTrack(activeScreenTrack); 
         } 
-        document.querySelector("#v-local video").srcObject=s; 
-        t.onended=()=>{ 
-            const c=localStream.getVideoTracks()[0]; 
+        
+        // Dir selbst das Bildschirm-Video anzeigen
+        document.querySelector("#v-local video").srcObject = s; 
+        
+        // 3. WENN BEENDET WIRD (Durch Klick auf den Button ODER die Windows-Leiste)
+        activeScreenTrack.onended = () => { 
+            const c = localStream.getVideoTracks()[0]; // Das ist deine normale Kamera
+            
+            // Den Jungs wieder die Kamera schicken
             for(let i in peers){ 
-                const se=peers[i].getSenders().find(x=>x.track.kind==='video'); 
+                const se = peers[i].getSenders().find(x => x.track.kind === 'video'); 
                 if(se) se.replaceTrack(c); 
             } 
-            document.querySelector("#v-local video").srcObject=localStream; 
+            
+            // Dir selbst wieder die Kamera anzeigen
+            document.querySelector("#v-local video").srcObject = localStream; 
+            activeScreenTrack = null; // Reset
+            
+            if(typeof showToast === "function") showToast("SCREEN SHARE BEENDET - WEBCAM AKTIV");
         }; 
-    } catch(e){} 
+    } catch(e){
+        console.error("Screen share abbruch:", e);
+    } 
 };
 
 // PiP / Popout
