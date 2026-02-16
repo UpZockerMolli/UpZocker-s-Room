@@ -422,3 +422,43 @@ body {
 .close-lightbox:hover { color: var(--neon-pink); transform: scale(1.1); }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.download-section {
+    margin-top: 20px;
+    padding: 10px;
+    border-top: 1px solid rgba(0, 245, 255, 0.2);
+    text-align: center;
+}
+
+.download-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(0, 245, 255, 0.1);
+    color: var(--neon-cyan);
+    border: 1px solid var(--neon-cyan);
+    padding: 12px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.85em;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 5px rgba(0, 245, 255, 0.2);
+    margin-top: 10px;
+}
+
+.download-btn:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon-cyan);
+    transform: translateY(-2px);
+}
+
+.version-tag {
+    display: block;
+    font-size: 0.6em;
+    color: #666;
+    margin-top: 5px;
+    letter-spacing: 1px;
+}

@@ -11,6 +11,7 @@ let users = {};
 let rooms = ["Lobby"];
 
 app.use(express.static(__dirname));
+app.use('/downloads', express.static('downloads'));
 
 io.on("connection", socket => {
     
