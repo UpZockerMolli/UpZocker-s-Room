@@ -1030,12 +1030,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 // --- NEU: ORDNER-AUSWAHL LOGIK ---
-const savePathInput = document.getElementById('savePathInput');
+const savePathDisplay = document.getElementById('savePathDisplay');
 const selectFolderBtn = document.getElementById('selectFolderBtn');
 
 const storedPath = localStorage.getItem('customSavePath');
 if (storedPath && window.electronAPI) {
-    if (savePathInput) savePathInput.value = storedPath;
+    if (savePathDisplay) savePathDisplay.innerText = storedPath;
     window.electronAPI.setSavePath(storedPath); 
 }
 
@@ -1044,7 +1044,7 @@ if (selectFolderBtn) {
         selectFolderBtn.onclick = async () => {
             const path = await window.electronAPI.selectFolder();
             if (path) {
-                savePathInput.value = path;
+                if (savePathDisplay) savePathDisplay.innerText = path;
                 localStorage.setItem('customSavePath', path);
                 window.electronAPI.setSavePath(path);
                 showToast("SPEICHERORT GEÄNDERT");
@@ -1052,7 +1052,7 @@ if (selectFolderBtn) {
         };
     } else {
         selectFolderBtn.style.display = 'none';
-        if (savePathInput) savePathInput.value = "Browser-Downloads (Nicht änderbar)";
+        if (savePathDisplay) savePathDisplay.innerText = "Browser-Downloads (Nicht änderbar)";
     }
 }
 

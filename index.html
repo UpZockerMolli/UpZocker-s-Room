@@ -62,6 +62,9 @@
                 <label style="color:#00f5ff; font-size:0.9em;">MISSION LOG (REC):</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyRec" class="hotkey-capture" readonly placeholder="Key..." value="F9"></div>
                 
+                <label style="color:#00f5ff; font-size:0.9em;">Screenshot:</label>
+                <div style="display:flex; gap:5px;"><input type="text" id="hotkeySnap" class="hotkey-capture" readonly></div>
+                
                 <label style="color:#00f5ff; font-size:0.9em;">CRYO STASIS (AFK):</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyAfk" class="hotkey-capture" readonly placeholder="Key..."></div>
                 
@@ -83,15 +86,14 @@
                 <label style="color:#00f5ff; font-size:0.9em;">VOLLBILD:</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyExpand" class="hotkey-capture" readonly placeholder="Key..."></div>
 
-                <label>Screenshot:</label>
-                <div style="display:flex; gap:5px;"><input type="text" id="hotkeySnap" class="hotkey-capture" readonly></div>
-
-<hr class="config-divider">
-<div class="config-save-path">
-    <label>SPEICHERORT FÜR AUFNAHMEN & BILDER:</label>
-    <div class="path-input-group">
-        <input type="text" id="savePathInput" readonly placeholder="Standard: Downloads">
-        <button id="selectFolderBtn" type="button">WÄHLEN</button>
+<hr style="border: 1px dashed rgba(0, 245, 255, 0.3); margin: 20px 0;">
+<div style="margin-bottom: 15px;">
+    <label style="font-size: 0.75em; color: #888; display: block; margin-bottom: 8px;">SPEICHERORT FÜR MEDIEN:</label>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button id="selectFolderBtn" type="button" style="background: rgba(0, 245, 255, 0.1); border: 1px solid #00f5ff; color: #00f5ff; padding: 8px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.3s;">
+            <i class="fas fa-folder-open"></i> ORDNER WÄHLEN
+        </button>
+        <span id="savePathDisplay" style="color: #00f5ff; font-family: monospace; font-size: 0.85em; word-break: break-all;">Standard: Downloads</span>
     </div>
 </div>
 
