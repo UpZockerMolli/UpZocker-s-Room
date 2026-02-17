@@ -520,9 +520,10 @@ document.addEventListener('click', (e) => {
     if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) {
         soundBoard.style.display = "none";
     }
-    const configBtn = document.getElementById("configBtn");
-    if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtn.contains(e.target)) {
+    const configBtnEl = document.getElementById("configBtn");
+    if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtnEl.contains(e.target)) {
         configPanel.style.display = "none";
+        toggleElectronHotkeys(true); // Hotkeys sofort wieder scharfschalten!
     }
 });
 
@@ -541,8 +542,24 @@ socket.on("user-left", (id) => {
 // --- DYNAMIC HOTKEY SYSTEM ---
 const recBtn = document.getElementById("recordBtn");
 const configPanel = document.getElementById("configPanel");
-document.getElementById("configBtn").onclick = () => configPanel.style.display = configPanel.style.display === "none" ? "block" : "none";
-
+document.getElementById("configBtn").onclick = () => {
+    const isOpening = configPanel.style.display === "none";
+    configPanel.style.display = isOpening ? "block" : "none";
+    
+    // Wenn das Menü aufgeht (isOpening = true), pausieren wir die Windows-Hotkeys (false)
+    toggleElectronHotkeys(!isOpening);
+}; {
+    if (!window.electronAPI) return;
+    if (enable) {
+        // Alle Tasten sammeln und an Windows schicken (Aktivieren)
+        const electronKeys = {};
+        Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
+        window.electronAPI.updateHotkeys(electronKeys);
+    } else {
+        // Leeres Objekt schicken -> Löscht alle Windows-Hotkeys temporär (Pausieren)
+        window.electronAPI.updateHotkeys({});
+    }
+}
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
     snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" },
@@ -606,22 +623,18 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
 
 // 3. Speichern aller Hotkeys
 document.getElementById("saveConfigBtn").onclick = () => {
-    const electronKeys = {}; 
-    
     Object.keys(hotkeys).forEach(key => {
         const inputEl = document.getElementById(hotkeys[key].id);
         if (inputEl) {
             hotkeys[key].current = inputEl.value;
             localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
-            electronKeys[key] = hotkeys[key].current;
         }
     });
     configPanel.style.display = "none";
     showToast("SYSTEM CONFIG UPDATED");
 
-    if (window.electronAPI) {
-        window.electronAPI.updateHotkeys(electronKeys);
-    }
+    // Hotkeys mit den neuen Werten wieder scharfschalten
+    toggleElectronHotkeys(true);
 };
 
 // Brückenschlag zum Desktop-Client
