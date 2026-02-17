@@ -83,6 +83,18 @@
                 <label style="color:#00f5ff; font-size:0.9em;">VOLLBILD:</label>
                 <div class="hotkey-input-wrapper"><input type="text" id="hotkeyExpand" class="hotkey-capture" readonly placeholder="Key..."></div>
 
+                <label>Screenshot:</label>
+                <div style="display:flex; gap:5px;"><input type="text" id="hotkeySnap" class="hotkey-capture" readonly></div>
+
+<hr style="border:1px solid #333; margin: 15px 0;">
+<div style="margin-bottom: 15px;">
+    <label style="font-size:0.8em; color:#888;">SPEICHERORT FÜR AUFNAHMEN & BILDER:</label>
+    <div style="display: flex; gap: 5px; margin-top: 5px;">
+        <input type="text" id="savePathInput" readonly placeholder="Standard: Downloads" style="flex:1; background:#05070d; color:#00f5ff; border:1px solid #00f5ff; padding:5px; font-size:0.8em;">
+        <button id="selectFolderBtn" type="button" style="background:rgba(0,245,255,0.1); border:1px solid #00f5ff; color:#00f5ff; cursor:pointer; padding:5px 10px;">WÄHLEN</button>
+    </div>
+</div>
+
                 <button id="saveConfigBtn" class="sb-btn" style="margin-top:10px;">SAVE CONFIG</button>
             </div>
         </div>
@@ -162,6 +174,7 @@
                 <button id="muteBtn" class="ctrl glitch-btn" title="Mikrofon"><i class="fas fa-microphone"></i></button>
                 <button id="radioBtn" class="ctrl glitch-btn" title="Military Radio Filter"><i class="fas fa-headset"></i></button>
                 <button id="recordBtn" class="ctrl glitch-btn" title="Mission Log (REC)"><i class="fas fa-circle"></i></button>
+                <button id="snapBtn" class="ctrl glitch-btn" title="Screenshot erstellen"><i class="fas fa-camera"></i></button>
                 <button id="cameraBtn" class="ctrl glitch-btn" title="Kamera"><i class="fas fa-video"></i></button>
                 <button id="shareBtn" class="ctrl desktop-only glitch-btn" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
                 <button id="popoutBtn" class="ctrl desktop-only glitch-btn" title="Popout Modus"><i class="fas fa-th-large"></i></button>

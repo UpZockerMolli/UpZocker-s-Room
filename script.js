@@ -555,6 +555,7 @@ document.getElementById("configBtn").onclick = () => configPanel.style.display =
 // Definition aller Hotkeys und deren Ziel-Buttons
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
+    snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" },
     radio:  { id: "hotkeyRadio",  btn: "radioBtn",   default: "",   current: "" },
     afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
     mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },
@@ -722,54 +723,66 @@ function toggleRecordingState() {
 }
 
 function startRecordingProcess() {
-    // 1. Abbruch, falls kein Bildschirm-Uplink vorhanden ist
-    if (!globalScreenStream) {
-        showToast("ERROR: NO UPLINK FOR RECORDING", "error");
-        return;
-    }
-
+    if (!globalScreenStream) { showToast("ERROR: NO UPLINK FOR RECORDING", "error"); return; }
     recordedChunks = [];
 
-    // 2. Audio-Mixer (AudioContext) initialisieren
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // WICHTIG: Electron/Chrome blockiert Audio oft, bis dieser Befehl kommt
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
+    // Master-Mixer laden
+    if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
 
-    const dest = audioCtx.createMediaStreamDestination();
+    const dest = globalAudioCtx.createMediaStreamDestination();
     let hasAudio = false;
 
-    // --- SPUR 1: SYSTEM-SOUND (Spiel/Desktop) ---
+    // Spur 1: Spiel/System
     const screenAudioTracks = globalScreenStream.getAudioTracks();
     if (screenAudioTracks.length > 0) {
-        const sysSource = audioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
-        const sysGain = audioCtx.createGain();
-        sysGain.gain.value = 0.6; // System-Sound etwas leiser, damit man dich hört
+        const sysSource = globalAudioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
+        const sysGain = globalAudioCtx.createGain();
+        sysGain.gain.value = 0.6; 
         sysSource.connect(sysGain);
         sysGain.connect(dest);
         hasAudio = true;
-        console.log("🔊 Aufnahme: System-Audio verbunden");
     }
 
-    // --- SPUR 2: MIKROFON (Deine Stimme) ---
+    // Spur 2: Mikrofon (Egal ob gefiltert oder normal)
     if (localStream && localStream.getAudioTracks().length > 0) {
         const currentMicTrack = localStream.getAudioTracks()[0];
-        
         if (currentMicTrack.readyState === 'live') {
-            const micSource = audioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
-            const micGain = audioCtx.createGain();
-            
-            // BOOST: Mikrofon deutlich lauter stellen für die Aufnahme
-            micGain.gain.value = 2.0; 
-            
-            micSource.connect(micGain);
-            micGain.connect(dest);
+            activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
+            recMicGain = globalAudioCtx.createGain();
+            recMicGain.gain.value = 2.0; 
+            activeMicSource.connect(recMicGain);
+            recMicGain.connect(dest);
             hasAudio = true;
-            console.log("🎤 Aufnahme: Mikrofon-Spur aktiv verbunden");
         }
     }
+
+    const tracks = [globalScreenStream.getVideoTracks()[0]];
+    if (hasAudio) tracks.push(dest.stream.getAudioTracks()[0]);
+    const combinedStream = new MediaStream(tracks);
+    
+    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
+                    ? { mimeType: 'video/webm;codecs=vp9,opus' } : { mimeType: 'video/webm' };
+
+    try { 
+        mediaRecorder = new MediaRecorder(combinedStream, options); 
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => { 
+            saveFile(); 
+            // WICHTIG: AudioCtx NICHT schließen, sonst stirbt der Radio-Filter!
+            activeMicSource = null; 
+            recMicGain = null; 
+        };
+        mediaRecorder.start(1000); 
+
+        recBtn.classList.add("recording");
+        recBtn.style.color = "#ff0000"; recBtn.style.borderColor = "#ff0000"; recBtn.style.boxShadow = "0 0 15px #ff0000";
+        new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
+        showToast("MISSION LOG: RECORDING STARTED");
+    } catch (err) { 
+        console.error(err); showToast("ERROR: RECORDER FAILED", "error");
+    }
+}
 
     // --- KOMBINATION: Video + Mix-Audio ---
     const tracks = [globalScreenStream.getVideoTracks()[0]];
@@ -813,7 +826,6 @@ function startRecordingProcess() {
         console.error("MediaRecorder konnte nicht gestartet werden:", err);
         showToast("ERROR: RECORDER FAILED", "error");
     }
-}
 
 function saveFile() {
     resetRecordingUI();
@@ -921,6 +933,8 @@ let isRadioActive = false;
 let rawAudioTrack = null;
 let radioAudioTrack = null;
 let radioAudioCtx = null;
+let activeMicSource = null;
+let recMicGain = null;
 
 // Helper: Erzeugt künstliche Verzerrung (Distortion)
 function makeDistortionCurve(amount) {
@@ -937,31 +951,28 @@ function makeDistortionCurve(amount) {
 // Initialisiert den Filter (wird beim Kamera-Start gerufen)
 function initRadioFilter() {
     if (!localStream || localStream.getAudioTracks().length === 0) return;
-    
     rawAudioTrack = localStream.getAudioTracks()[0];
     
-    // Audio Context aufbauen
-    radioAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = radioAudioCtx.createMediaStreamSource(new MediaStream([rawAudioTrack]));
-    
-    // 1. Bandpass-Filter (Schneidet Bässe und Höhen ab -> Telefon/Funkgerät-Klang)
-    const bandpass = radioAudioCtx.createBiquadFilter();
-    bandpass.type = "bandpass";
-    bandpass.frequency.value = 1200; // Mitten-Fokus
-    bandpass.Q.value = 1.0;          // Bandbreite
+    // Master-Mixer nutzen oder erstellen
+    if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
 
-    // 2. Leichte Verzerrung (WaveShaper)
-    const distortion = radioAudioCtx.createWaveShaper();
-    distortion.curve = makeDistortionCurve(15); // Nicht zu extrem, man soll dich noch verstehen
+    const source = globalAudioCtx.createMediaStreamSource(new MediaStream([rawAudioTrack]));
+    
+    const bandpass = globalAudioCtx.createBiquadFilter();
+    bandpass.type = "bandpass";
+    bandpass.frequency.value = 1200;
+    bandpass.Q.value = 1.0;
+
+    const distortion = globalAudioCtx.createWaveShaper();
+    distortion.curve = makeDistortionCurve(15);
     distortion.oversample = '4x';
 
-    // 3. Gain (Lautstärke etwas anheben, da Bandpass leiser macht)
-    const gain = radioAudioCtx.createGain();
+    const gain = globalAudioCtx.createGain();
     gain.gain.value = 1.5;
 
-    const dest = radioAudioCtx.createMediaStreamDestination();
+    const dest = globalAudioCtx.createMediaStreamDestination();
 
-    // Verkabeln
     source.connect(bandpass);
     bandpass.connect(distortion);
     distortion.connect(gain);
@@ -978,28 +989,30 @@ document.getElementById("radioBtn").onclick = () => {
         return;
     }
 
-    // Wenn noch nicht initialisiert, jetzt machen
     if (!radioAudioTrack) initRadioFilter();
 
     isRadioActive = !isRadioActive;
-    
-    // UI Update
     document.getElementById("radioBtn").classList.toggle("active", isRadioActive);
     
-    // Welcher Track soll gesendet werden?
     const trackToSend = isRadioActive ? radioAudioTrack : rawAudioTrack;
 
-    // 1. Lokalen Stream updaten (wichtig für die Aufnahme / Mission Log!)
+    // 1. Live-Stream für dich und die Peers updaten
     localStream.removeTrack(localStream.getAudioTracks()[0]);
     localStream.addTrack(trackToSend);
 
-    // 2. WebRTC-Peers updaten (damit die anderen dich verzerrt hören)
     for (let id in peers) {
         const sender = peers[id].getSenders().find(s => s.track.kind === 'audio');
         if (sender) sender.replaceTrack(trackToSend);
     }
 
-    // Sound-Feedback (typisches Walkie-Talkie "Klick")
+    // 2. LIVE-UPDATE FÜR DIE AUFNAHME (Falls gerade eine läuft!)
+    if (globalAudioCtx && activeMicSource && recMicGain && trackToSend.readyState === 'live') {
+        activeMicSource.disconnect(); // Alte Spur abklemmen
+        activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([trackToSend]));
+        activeMicSource.connect(recMicGain); // Neue, gefilterte Spur live einklemmen
+        console.log("Aufnahme-Mixer: Audio-Spur live gewechselt!");
+    }
+
     const radioClick = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
     radioClick.volume = 0.5;
     radioClick.play().catch(()=>{});
@@ -1096,3 +1109,58 @@ document.addEventListener('keydown', (e) => {
        lightbox.style.display = 'none';
    }
 });
+
+// --- NEU: ORDNER-AUSWAHL LOGIK ---
+const savePathInput = document.getElementById('savePathInput');
+const selectFolderBtn = document.getElementById('selectFolderBtn');
+
+// Pfad beim Start aus dem lokalen Speicher laden
+const storedPath = localStorage.getItem('customSavePath');
+if (storedPath && window.electronAPI) {
+    if (savePathInput) savePathInput.value = storedPath;
+    window.electronAPI.setSavePath(storedPath); // Dem Desktop-Client den Pfad übergeben
+}
+
+if (selectFolderBtn) {
+    if (window.electronAPI) {
+        selectFolderBtn.onclick = async () => {
+            const path = await window.electronAPI.selectFolder();
+            if (path) {
+                savePathInput.value = path;
+                localStorage.setItem('customSavePath', path);
+                window.electronAPI.setSavePath(path);
+                showToast("SPEICHERORT GEÄNDERT");
+            }
+        };
+    } else {
+        // Fallback für Nutzer, die nur im Browser sind
+        selectFolderBtn.style.display = 'none';
+        if (savePathInput) savePathInput.value = "Browser-Downloads (Nicht änderbar)";
+    }
+}
+
+// --- NEU: SCREENSHOT LOGIK ---
+const snapBtn = document.getElementById('snapBtn');
+if (snapBtn) {
+    snapBtn.onclick = () => {
+        if (window.electronAPI) {
+            window.electronAPI.takeScreenshot();
+            // Blitzeffekt auf dem Bildschirm
+            const flash = document.createElement('div');
+            flash.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:white; z-index:9999; pointer-events:none; transition: opacity 0.3s ease; opacity: 0.8;";
+            document.body.appendChild(flash);
+            setTimeout(() => flash.style.opacity = "0", 50);
+            setTimeout(() => flash.remove(), 300);
+        } else {
+            showToast("SCREENSHOTS NUR IM DESKTOP CLIENT VERFÜGBAR", "error");
+        }
+    };
+}
+
+// Hört auf die Bestätigung vom Desktop-Client, dass das Bild gespeichert wurde
+if (window.electronAPI) {
+    window.electronAPI.onNotify((msg) => {
+        showToast(msg);
+        new Audio("https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3").play().catch(()=>{});
+    });
+}
