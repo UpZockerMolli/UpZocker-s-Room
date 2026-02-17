@@ -516,3 +516,82 @@ body {
     display: block;
     margin-bottom: 2px;
 }
+
+/* --- SCREENSHOT BUTTON (VIDEO CONTROLS) --- */
+#snapBtn {
+    background: rgba(0, 245, 255, 0.1);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+}
+
+#snapBtn:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-cyan);
+    transform: scale(1.1);
+}
+
+/* --- ORDNER-AUSWAHL (CONFIG PANEL) --- */
+.config-divider {
+    border: 0;
+    border-top: 1px dashed rgba(0, 245, 255, 0.3);
+    margin: 20px 0;
+}
+
+.config-save-path label {
+    font-size: 0.75em;
+    color: #888;
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.path-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+#savePathInput {
+    flex: 1;
+    background: #05070d;
+    color: var(--neon-cyan);
+    border: 1px solid rgba(0, 245, 255, 0.3);
+    padding: 8px 10px;
+    font-family: monospace;
+    font-size: 0.85em;
+    border-radius: 4px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+#savePathInput:hover {
+    border-color: var(--neon-cyan);
+}
+
+#selectFolderBtn {
+    background: rgba(0, 245, 255, 0.1);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    cursor: pointer;
+    padding: 0 15px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    font-size: 0.8em;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+#selectFolderBtn:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-cyan);
+}
