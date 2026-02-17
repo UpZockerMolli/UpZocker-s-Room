@@ -12,7 +12,7 @@ let isAfk = false;
 let typingTimeout = null;
 let recStartTime, recTimerInterval;
 
-// NEU GEFIXT: Spracherkennungs-Variable MUSS ganz oben stehen!
+// Spracherkennung MUSS oben stehen
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = SpeechRecognition ? new SpeechRecognition() : null; 
 
@@ -21,7 +21,7 @@ const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const chatSound = document.getElementById("chatSound");
 chatSound.volume = 0.5;
 
-// Emojis (Compact)
+// Emojis
 const emojiMap = {
     faces: ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🧐","😎","🤩","😏","😒","😔","😟","😕","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😮","😲","🥱","😴","🤤","😵","🥴","🤢","🤮","😷","🤒"],
     gestures: ["👋","🤚","🖖","👌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","💪","💅","🤳"],
@@ -93,7 +93,7 @@ socket.on("login-error", msg => {
     showToast(msg, "error");
 });
 
-// --- ROOM MANAGEMENT (MODAL & LIST) ---
+// --- ROOM MANAGEMENT ---
 const modal = document.getElementById("customModal");
 const modalInput = document.getElementById("newRoomInput");
 
@@ -119,9 +119,7 @@ modalInput.addEventListener("keydown", (e) => {
     if (e.key === "Escape") modal.style.display = "none";
 });
 
-// Update Data (Rooms & Users)
 socket.on("update-data", ({ rooms: roomList, users: userList }) => {
-    // 1. Raumliste
     const rList = document.getElementById("roomList");
     rList.innerHTML = "";
     
@@ -136,7 +134,7 @@ socket.on("update-data", ({ rooms: roomList, users: userList }) => {
         btn.onclick = () => {
              if (r !== currentRoom) {
                  currentRoom = r;
-                 roomStartTime = Date.now(); // Timer resetten!
+                 roomStartTime = Date.now();
                  socket.emit("join", { room: r });
              }
         };
@@ -157,7 +155,6 @@ socket.on("update-data", ({ rooms: roomList, users: userList }) => {
         rList.appendChild(row);
     });
 
-    // 2. Userliste
     const uList = document.getElementById("userList");
     uList.innerHTML = "";
     userList.forEach(u => {
@@ -173,7 +170,6 @@ socket.on("update-data", ({ rooms: roomList, users: userList }) => {
 
 socket.on("notify", msg => {
     showToast(msg);
-    // Chat Log
     const b = document.getElementById("chatBox");
     const div = document.createElement("div");
     div.className = "system-msg";
@@ -210,7 +206,6 @@ const startCamera = async () => {
 
 document.getElementById("initVideoBtn").onclick = startCamera;
 
-// Controls
 document.getElementById("muteBtn").onclick = () => { 
     if(localStream) { 
         const t = localStream.getAudioTracks()[0]; 
@@ -228,19 +223,16 @@ document.getElementById("expandBtn").onclick = () => {
     !document.fullscreenElement ? s.requestFullscreen().catch(()=>{}) : document.exitFullscreen(); 
 };
 
-// Screen Share (TOGGLE-FUNKTION)
+// Screen Share
 let activeScreenTrack = null; 
 
 document.getElementById("shareBtn").onclick = async () => { 
-    
-    // 1. PRÜFUNG: Teilen wir bereits den Bildschirm?
     if (activeScreenTrack && activeScreenTrack.readyState === "live") {
         activeScreenTrack.stop();
         activeScreenTrack.dispatchEvent(new Event('ended')); 
         return;
     }
 
-    // 2. NORMALER START
     try { 
         const s = await navigator.mediaDevices.getDisplayMedia({video:true}); 
         activeScreenTrack = s.getVideoTracks()[0]; 
@@ -254,15 +246,12 @@ document.getElementById("shareBtn").onclick = async () => {
         
         activeScreenTrack.onended = () => { 
             const c = localStream.getVideoTracks()[0]; 
-            
             for(let i in peers){ 
                 const se = peers[i].getSenders().find(x => x.track.kind === 'video'); 
                 if(se) se.replaceTrack(c); 
             } 
-            
             document.querySelector("#v-local video").srcObject = localStream; 
             activeScreenTrack = null; 
-            
             if(typeof showToast === "function") showToast("SCREEN SHARE BEENDET - WEBCAM AKTIV");
         }; 
     } catch(e){
@@ -292,7 +281,7 @@ function drawCover(ctx,img,x,y,w,h){
     ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
 }
 
-// Add Video & Audio Mixer
+// Video Node
 function addVideoNode(id, name, stream, isLocal) {
     if (document.getElementById(`v-${id}`)) return;
     
@@ -346,7 +335,6 @@ function updateGridStyle(){
 
 // --- AFK / CRYO SYSTEM ---
 const originalStreams = {}; 
-
 function createCryoStream() {
     const canvas = document.createElement("canvas");
     canvas.width = 640; canvas.height = 360; 
@@ -454,7 +442,6 @@ socket.on("chat-message", d => {
     const userColor = isMe ? 'neon-text-pink' : 'neon-text-cyan';
     
     let content = "";
-    
     if (d.type === "file") {
         if (d.data.startsWith("data:image/")) {
             content = `
@@ -478,55 +465,6 @@ socket.on("chat-message", d => {
     if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
 });
 
-// --- EMOJI & SOUNDBOARD ---
-const emojiBtn = document.getElementById("emojiBtn");
-const emojiPicker = document.getElementById("emojiPicker");
-const emojiGrid = document.getElementById("emojiGrid");
-loadEmojis("faces");
-emojiBtn.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none"; };
-document.querySelectorAll(".tab-btn").forEach(btn => { 
-    btn.onclick = () => { 
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active")); 
-        btn.classList.add("active"); 
-        loadEmojis(btn.getAttribute("data-cat")); 
-    }; 
-});
-function loadEmojis(cat) { 
-    emojiGrid.innerHTML = ""; 
-    (emojiMap[cat]||[]).forEach(e => { 
-        const s=document.createElement("span"); s.innerText=e; s.className="emoji-item"; 
-        s.onclick=()=>{msgInput.value+=e; msgInput.focus();}; 
-        emojiGrid.appendChild(s); 
-    }); 
-}
-
-const soundBtn = document.getElementById("soundBtn");
-const soundBoard = document.getElementById("soundBoard");
-soundBtn.onclick = () => { soundBoard.style.display = soundBoard.style.display === "none" ? "flex" : "none"; };
-document.querySelectorAll(".sb-btn").forEach(btn => {
-    btn.onclick = () => {
-        const sid = btn.getAttribute("data-sound");
-        playSoundLocal(sid);
-        socket.emit("play-sound", sid);
-    };
-});
-function playSoundLocal(sid) { const audio = document.getElementById(sid); if(audio) { audio.currentTime=0; audio.play().catch(()=>{}); } }
-socket.on("play-sound", (sid) => playSoundLocal(sid));
-
-document.addEventListener('click', (e) => {
-    if (emojiPicker.style.display === "flex" && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
-        emojiPicker.style.display = "none";
-    }
-    if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) {
-        soundBoard.style.display = "none";
-    }
-    const configBtnEl = document.getElementById("configBtn");
-    if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtnEl.contains(e.target)) {
-        configPanel.style.display = "none";
-        toggleElectronHotkeys(true); // Hotkeys sofort wieder scharfschalten!
-    }
-});
-
 // --- WEBRTC ---
 socket.on("user-ready", ({ id, name }) => { const pc=new RTCPeerConnection(config); peers[id]=pc; localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); pc.onicecandidate=e=>e.candidate&&socket.emit("ice",{candidate:e.candidate,to:id}); addVideoNode(id,name,null,false); pc.ontrack=e=>{const v=document.querySelector(`#v-${id} video`);if(v)v.srcObject=e.streams[0];}; pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>socket.emit("offer",{offer:pc.localDescription,to:id,name:myName})); });
 socket.on("offer", async d => { const pc=new RTCPeerConnection(config); peers[d.from]=pc; localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); pc.onicecandidate=e=>e.candidate&&socket.emit("ice",{candidate:e.candidate,to:d.from}); addVideoNode(d.from,d.name,null,false); pc.ontrack=e=>{const v=document.querySelector(`#v-${d.from} video`);if(v)v.srcObject=e.streams[0];}; await pc.setRemoteDescription(d.offer); const a=await pc.createAnswer(); await pc.setLocalDescription(a); socket.emit("answer",{answer:a,to:d.from}); });
@@ -542,27 +480,10 @@ socket.on("user-left", (id) => {
 // --- DYNAMIC HOTKEY SYSTEM ---
 const recBtn = document.getElementById("recordBtn");
 const configPanel = document.getElementById("configPanel");
-document.getElementById("configBtn").onclick = () => {
-    const isOpening = configPanel.style.display === "none";
-    configPanel.style.display = isOpening ? "block" : "none";
-    
-    // Wenn das Menü aufgeht (isOpening = true), pausieren wir die Windows-Hotkeys (false)
-    toggleElectronHotkeys(!isOpening);
-}; {
-    if (!window.electronAPI) return;
-    if (enable) {
-        // Alle Tasten sammeln und an Windows schicken (Aktivieren)
-        const electronKeys = {};
-        Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
-        window.electronAPI.updateHotkeys(electronKeys);
-    } else {
-        // Leeres Objekt schicken -> Löscht alle Windows-Hotkeys temporär (Pausieren)
-        window.electronAPI.updateHotkeys({});
-    }
-}
+
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
-    snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" },
+    snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" }, // NEU: Screenshot Hotkey integriert!
     radio:  { id: "hotkeyRadio",  btn: "radioBtn",   default: "",   current: "" },
     afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
     mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },
@@ -570,6 +491,24 @@ const hotkeys = {
     share:  { id: "hotkeyShare",  btn: "shareBtn",   default: "",   current: "" },
     pip:    { id: "hotkeyPip",    btn: "popoutBtn",  default: "",   current: "" },
     expand: { id: "hotkeyExpand", btn: "expandBtn",  default: "",   current: "" }
+};
+
+// NEU: Helper um Electron Hotkeys temporär zu pausieren
+function toggleElectronHotkeys(enable) {
+    if (!window.electronAPI) return;
+    if (enable) {
+        const electronKeys = {};
+        Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
+        window.electronAPI.updateHotkeys(electronKeys);
+    } else {
+        window.electronAPI.updateHotkeys({});
+    }
+}
+
+document.getElementById("configBtn").onclick = () => {
+    const isOpening = configPanel.style.display === "none";
+    configPanel.style.display = isOpening ? "block" : "none";
+    toggleElectronHotkeys(!isOpening);
 };
 
 // 1. Laden aus dem LocalStorage
@@ -632,17 +571,12 @@ document.getElementById("saveConfigBtn").onclick = () => {
     });
     configPanel.style.display = "none";
     showToast("SYSTEM CONFIG UPDATED");
-
-    // Hotkeys mit den neuen Werten wieder scharfschalten
     toggleElectronHotkeys(true);
 };
 
-// Brückenschlag zum Desktop-Client
+// Brückenschlag zum Desktop-Client (initial)
 if (window.electronAPI) {
-    const electronKeys = {};
-    Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
-    window.electronAPI.updateHotkeys(electronKeys);
-
+    toggleElectronHotkeys(true);
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
         if (targetBtn) {
@@ -656,7 +590,6 @@ document.addEventListener("keydown", (e) => {
     if (["messageInput", "usernameInput", "passwordInput", "newRoomInput"].includes(document.activeElement.id) || 
         document.activeElement.classList.contains("hotkey-capture")) return;
 
-    // NEU GEFIXT: Wenn e.key null ist, abbrechen!
     if (!e.key) return;
     const pressedKey = e.key.toLowerCase();
 
@@ -743,7 +676,6 @@ function startRecordingProcess() {
         }
     }
 
-    // NEU GEFIXT: Nur Video auslesen, wenn es existiert!
     const tracks = [];
     if (globalScreenStream && globalScreenStream.getVideoTracks().length > 0) {
         tracks.push(globalScreenStream.getVideoTracks()[0]);
@@ -753,24 +685,16 @@ function startRecordingProcess() {
     }
 
     const combinedStream = new MediaStream(tracks);
-    
-    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
-                    ? { mimeType: 'video/webm;codecs=vp9,opus' } 
-                    : { mimeType: 'video/webm' };
+    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? { mimeType: 'video/webm;codecs=vp9,opus' } : { mimeType: 'video/webm' };
 
     try { 
         mediaRecorder = new MediaRecorder(combinedStream, options); 
-        
-        mediaRecorder.ondataavailable = (e) => { 
-            if (e.data.size > 0) recordedChunks.push(e.data); 
-        };
-
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => { 
             saveFile(); 
             activeMicSource = null; 
             recMicGain = null; 
         };
-
         mediaRecorder.start(1000); 
 
         recBtn.classList.add("recording");
@@ -782,7 +706,7 @@ function startRecordingProcess() {
         showToast("MISSION LOG: RECORDING STARTED");
 
     } catch (err) { 
-        console.error("MediaRecorder konnte nicht gestartet werden:", err);
+        console.error("MediaRecorder Error:", err);
         showToast("ERROR: RECORDER FAILED", "error");
     }
 }
@@ -806,7 +730,6 @@ function resetRecordingUI() {
     recBtn.style = "";
 }
 
-// Media Session API (Background Hotkeys)
 if ('mediaSession' in navigator) {
     const triggerRec = () => { if (globalScreenStream && globalScreenStream.active) toggleRecordingState(); };
     try {
@@ -816,7 +739,7 @@ if ('mediaSession' in navigator) {
     } catch(e){}
 }
 
-// --- VOICE COMMAND SYSTEM (ROBUST) ---
+// --- VOICE COMMAND SYSTEM ---
 function initVoiceCommands() {
     if (!recognition) return;
 
@@ -878,9 +801,60 @@ document.getElementById("inviteBtn").onclick = () => {
 
 const clickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
 clickSound.volume = 0.1;
+
+// --- EMOJI, SOUNDBOARD & CLICK-OUTSIDE LISTENER ---
+const emojiBtn = document.getElementById("emojiBtn");
+const emojiPicker = document.getElementById("emojiPicker");
+const emojiGrid = document.getElementById("emojiGrid");
+loadEmojis("faces");
+emojiBtn.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === "none" ? "flex" : "none"; };
+document.querySelectorAll(".tab-btn").forEach(btn => { 
+    btn.onclick = () => { 
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active")); 
+        btn.classList.add("active"); 
+        loadEmojis(btn.getAttribute("data-cat")); 
+    }; 
+});
+function loadEmojis(cat) { 
+    emojiGrid.innerHTML = ""; 
+    (emojiMap[cat]||[]).forEach(e => { 
+        const s=document.createElement("span"); s.innerText=e; s.className="emoji-item"; 
+        s.onclick=()=>{msgInput.value+=e; msgInput.focus();}; 
+        emojiGrid.appendChild(s); 
+    }); 
+}
+
+const soundBtn = document.getElementById("soundBtn");
+const soundBoard = document.getElementById("soundBoard");
+soundBtn.onclick = () => { soundBoard.style.display = soundBoard.style.display === "none" ? "flex" : "none"; };
+document.querySelectorAll(".sb-btn").forEach(btn => {
+    btn.onclick = () => {
+        const sid = btn.getAttribute("data-sound");
+        playSoundLocal(sid);
+        socket.emit("play-sound", sid);
+    };
+});
+function playSoundLocal(sid) { const audio = document.getElementById(sid); if(audio) { audio.currentTime=0; audio.play().catch(()=>{}); } }
+socket.on("play-sound", (sid) => playSoundLocal(sid));
+
+// Globaler Klick-Listener (Schließt Popups & spielt Klick-Sound)
 document.addEventListener("click", (e) => {
     if (e.target.tagName === "BUTTON" || e.target.closest("button")) {
         const s = clickSound.cloneNode(); s.volume = 0.1; s.play().catch(()=>{});
+    }
+
+    if (emojiPicker.style.display === "flex" && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
+        emojiPicker.style.display = "none";
+    }
+    if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) {
+        soundBoard.style.display = "none";
+    }
+    
+    // Config Panel schließen & Hotkeys wiederherstellen
+    const configBtnEl = document.getElementById("configBtn");
+    if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtnEl.contains(e.target)) {
+        configPanel.style.display = "none";
+        toggleElectronHotkeys(true);
     }
 });
 
@@ -959,7 +933,6 @@ document.getElementById("radioBtn").onclick = () => {
         activeMicSource.disconnect(); 
         activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([trackToSend]));
         activeMicSource.connect(recMicGain); 
-        console.log("Aufnahme-Mixer: Audio-Spur live gewechselt!");
     }
 
     const radioClick = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
@@ -984,14 +957,12 @@ if (installBtn) {
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
         deferredPrompt = null;
         installBtn.style.display = 'none';
     });
 }
 
 window.addEventListener('appinstalled', () => {
-    console.log('PWA was installed');
     if (installBtn) installBtn.style.display = 'none';
     showToast("STATION APP INSTALLED SUCCESSFULLY");
 });
