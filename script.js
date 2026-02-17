@@ -561,18 +561,36 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
 });
 
 // 3. Speichern aller Hotkeys
-document.getElementById("saveConfigBtn").onclick = () => {
-    Object.keys(hotkeys).forEach(key => {
-        const inputEl = document.getElementById(hotkeys[key].id);
-        if (inputEl) {
-            hotkeys[key].current = inputEl.value;
-            localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
+const saveBtn = document.getElementById("saveConfigBtn");
+
+if (saveBtn) {
+    saveBtn.onclick = (e) => {
+        // WICHTIG: Verhindert, dass der Browser beim Klicken versehentlich die Seite neu lädt
+        e.preventDefault(); 
+        
+        // 1. Alle Werte auslesen und speichern
+        Object.keys(hotkeys).forEach(key => {
+            const inputEl = document.getElementById(hotkeys[key].id);
+            if (inputEl) {
+                hotkeys[key].current = inputEl.value;
+                localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
+            }
+        });
+        
+        // 2. Das Menü schließen
+        if (configPanel) {
+            configPanel.style.display = "none";
         }
-    });
-    configPanel.style.display = "none";
-    showToast("SYSTEM CONFIG UPDATED");
-    toggleElectronHotkeys(true);
-};
+        
+        // 3. Die gewünschte Push-Benachrichtigung anzeigen
+        showToast("Config saved");
+
+        // 4. Die neuen Hotkeys an den Windows-Client (Electron) senden und scharfschalten
+        toggleElectronHotkeys(true);
+    };
+} else {
+    console.error("FEHLER: Der Save-Button (saveConfigBtn) wurde im HTML nicht gefunden!");
+}
 
 // Brückenschlag zum Desktop-Client (initial)
 if (window.electronAPI) {
