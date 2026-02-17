@@ -444,28 +444,37 @@ socket.on("chat-message", d => {
     const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const userColor = isMe ? 'neon-text-pink' : 'neon-text-cyan';
     
-    let content = "";
     if (d.type === "file") {
-        if (d.data.startsWith("data:image/")) {
-            content = `
-            <div class="chat-image-wrapper">
-                <img src="${d.data}" class="chat-inline-img clickable" alt="${d.fileName}" onclick="openLightbox('${d.data}')" title="Großansicht">
-                <a href="${d.data}" download="${d.fileName}" class="file-msg" style="font-size:0.8em; padding:3px; display:inline-block; margin-top: 5px;">
-                    <i class="fas fa-file-download"></i> ${d.fileName} speichern
-                </a>
-            </div>`;
-        } else {
-            content = `<a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName}</a>`;
-        }
-    } else {
-        content = d.text;
-    }
+        // NEU: Wandelt den gigantischen Bild-Code in ein extrem schnelles "Blob"-Paket um
+        fetch(d.data).then(res => res.blob()).then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            let content = "";
+            
+            if (d.data.startsWith("data:image/")) {
+                content = `
+                <div class="chat-image-wrapper">
+                    <img src="${blobUrl}" class="chat-inline-img clickable" alt="${d.fileName}" onclick="openLightbox('${blobUrl}')" title="Großansicht">
+                    <a href="${blobUrl}" download="${d.fileName}" class="file-msg" style="font-size:0.8em; padding:3px; display:inline-block; margin-top: 5px;">
+                        <i class="fas fa-file-download"></i> ${d.fileName} speichern
+                    </a>
+                </div>`;
+            } else {
+                content = `<a href="${blobUrl}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName} speichern</a>`;
+            }
 
-    div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
-    b.appendChild(div);
-    b.scrollTop = b.scrollHeight;
-    
-    if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
+            div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
+            b.appendChild(div);
+            b.scrollTop = b.scrollHeight;
+            if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
+        });
+    } else {
+        // Normale Text-Nachrichten
+        let content = d.text;
+        div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
+        b.appendChild(div);
+        b.scrollTop = b.scrollHeight;
+        if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
+    }
 });
 
 // --- WEBRTC ---
