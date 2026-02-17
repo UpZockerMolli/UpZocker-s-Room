@@ -12,6 +12,10 @@ let isAfk = false;
 let typingTimeout = null;
 let recStartTime, recTimerInterval;
 
+// NEU GEFIXT: Spracherkennungs-Variable MUSS ganz oben stehen!
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = SpeechRecognition ? new SpeechRecognition() : null; 
+
 // Config & Audio
 const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 const chatSound = document.getElementById("chatSound");
@@ -132,7 +136,7 @@ socket.on("update-data", ({ rooms: roomList, users: userList }) => {
         btn.onclick = () => {
              if (r !== currentRoom) {
                  currentRoom = r;
-                 roomStartTime = Date.now(); // <-- NEU: Timer resetten!
+                 roomStartTime = Date.now(); // Timer resetten!
                  socket.emit("join", { room: r });
              }
         };
@@ -225,45 +229,39 @@ document.getElementById("expandBtn").onclick = () => {
 };
 
 // Screen Share (TOGGLE-FUNKTION)
-let activeScreenTrack = null; // Speichert den aktuellen Screen-Share
+let activeScreenTrack = null; 
 
 document.getElementById("shareBtn").onclick = async () => { 
     
     // 1. PRÜFUNG: Teilen wir bereits den Bildschirm?
     if (activeScreenTrack && activeScreenTrack.readyState === "live") {
-        // Manuell stoppen -> Löst automatisch die Rückkehr zur Webcam (onended) aus!
         activeScreenTrack.stop();
         activeScreenTrack.dispatchEvent(new Event('ended')); 
         return;
     }
 
-    // 2. NORMALER START: Bildschirm auswählen
+    // 2. NORMALER START
     try { 
         const s = await navigator.mediaDevices.getDisplayMedia({video:true}); 
         activeScreenTrack = s.getVideoTracks()[0]; 
         
-        // Den Jungs das Bildschirm-Video schicken
         for(let i in peers){ 
             const se = peers[i].getSenders().find(x => x.track.kind === 'video'); 
             if(se) se.replaceTrack(activeScreenTrack); 
         } 
         
-        // Dir selbst das Bildschirm-Video anzeigen
         document.querySelector("#v-local video").srcObject = s; 
         
-        // 3. WENN BEENDET WIRD (Durch Klick auf den Button ODER die Windows-Leiste)
         activeScreenTrack.onended = () => { 
-            const c = localStream.getVideoTracks()[0]; // Das ist deine normale Kamera
+            const c = localStream.getVideoTracks()[0]; 
             
-            // Den Jungs wieder die Kamera schicken
             for(let i in peers){ 
                 const se = peers[i].getSenders().find(x => x.track.kind === 'video'); 
                 if(se) se.replaceTrack(c); 
             } 
             
-            // Dir selbst wieder die Kamera anzeigen
             document.querySelector("#v-local video").srcObject = localStream; 
-            activeScreenTrack = null; // Reset
+            activeScreenTrack = null; 
             
             if(typeof showToast === "function") showToast("SCREEN SHARE BEENDET - WEBCAM AKTIV");
         }; 
@@ -458,19 +456,15 @@ socket.on("chat-message", d => {
     let content = "";
     
     if (d.type === "file") {
-        // --- NEU: Prüfen, ob die Datei ein Bild ist ---
         if (d.data.startsWith("data:image/")) {
-            // Zeige es als klickbares Bild im Chat an (ruft jetzt openLightbox auf!)
             content = `
             <div class="chat-image-wrapper">
                 <img src="${d.data}" class="chat-inline-img clickable" alt="${d.fileName}" onclick="openLightbox('${d.data}')" title="Großansicht">
-                
                 <a href="${d.data}" download="${d.fileName}" class="file-msg" style="font-size:0.8em; padding:3px; display:inline-block; margin-top: 5px;">
                     <i class="fas fa-file-download"></i> ${d.fileName} speichern
                 </a>
             </div>`;
         } else {
-            // Normaler Datei-Download für alles andere (z.B. PDFs, Zips)
             content = `<a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName}</a>`;
         }
     } else {
@@ -520,15 +514,12 @@ function playSoundLocal(sid) { const audio = document.getElementById(sid); if(au
 socket.on("play-sound", (sid) => playSoundLocal(sid));
 
 document.addEventListener('click', (e) => {
-    // Emojis schließen
     if (emojiPicker.style.display === "flex" && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
         emojiPicker.style.display = "none";
     }
-    // Soundboard schließen
     if (soundBoard.style.display === "flex" && !soundBoard.contains(e.target) && !soundBtn.contains(e.target)) {
         soundBoard.style.display = "none";
     }
-    // NEU: Config-Panel schließen
     const configBtn = document.getElementById("configBtn");
     if (configPanel.style.display === "block" && !configPanel.contains(e.target) && !configBtn.contains(e.target)) {
         configPanel.style.display = "none";
@@ -552,7 +543,6 @@ const recBtn = document.getElementById("recordBtn");
 const configPanel = document.getElementById("configPanel");
 document.getElementById("configBtn").onclick = () => configPanel.style.display = configPanel.style.display === "none" ? "block" : "none";
 
-// Definition aller Hotkeys und deren Ziel-Buttons
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
     snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" },
@@ -575,10 +565,8 @@ Object.keys(hotkeys).forEach(key => {
 
 // 2. Eingabe-Logik für alle Input-Felder & Lösch-Buttons
 document.querySelectorAll(".hotkey-capture").forEach(input => {
-    // Tasten-Erfassung
     input.addEventListener("keydown", (e) => {
         e.preventDefault();
-        // Tasten zum manuellen Löschen
         if (e.key === "Escape" || e.key === "Backspace" || e.key === "Delete") {
             input.value = "";
         } else {
@@ -586,21 +574,18 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
         }
     });
 
-    // --- NEU: Visueller Löschen-Button (Rotes X) ---
     const wrapper = input.parentElement;
     wrapper.style.display = "flex";
     wrapper.style.gap = "5px";
-    input.style.flex = "1"; // Eingabefeld nimmt den restlichen Platz
+    input.style.flex = "1"; 
     
     const clearBtn = document.createElement("button");
     clearBtn.type = "button"; 
     clearBtn.innerHTML = '<i class="fas fa-times"></i>';
     clearBtn.title = "Hotkey deaktivieren";
     
-    // Cyberpunk Mülleimer-Styling (Direkt per JS injiziert)
     clearBtn.style.cssText = "background: rgba(255,0,0,0.1); border: 1px solid #550000; color: #ff0000; width: 45px; cursor: pointer; border-radius: 4px; transition: 0.2s; display: flex; justify-content: center; align-items: center; font-size: 1.1em;";
     
-    // Hover-Effekte (leuchtet rot auf)
     clearBtn.onmouseover = () => { 
         clearBtn.style.background = "#ff0000"; 
         clearBtn.style.color = "#000"; 
@@ -612,9 +597,8 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
         clearBtn.style.boxShadow = "none"; 
     };
     
-    // Klick-Logik zum Leeren
     clearBtn.onclick = () => {
-        input.value = ""; // Feld leeren
+        input.value = ""; 
     };
     
     wrapper.appendChild(clearBtn);
@@ -622,7 +606,7 @@ document.querySelectorAll(".hotkey-capture").forEach(input => {
 
 // 3. Speichern aller Hotkeys
 document.getElementById("saveConfigBtn").onclick = () => {
-    const electronKeys = {}; // Sammelt die Tasten für den Desktop-Client
+    const electronKeys = {}; 
     
     Object.keys(hotkeys).forEach(key => {
         const inputEl = document.getElementById(hotkeys[key].id);
@@ -635,22 +619,18 @@ document.getElementById("saveConfigBtn").onclick = () => {
     configPanel.style.display = "none";
     showToast("SYSTEM CONFIG UPDATED");
 
-    // NEU: Wenn wir im Desktop-Client sind, schicke die Tasten an Windows!
     if (window.electronAPI) {
         window.electronAPI.updateHotkeys(electronKeys);
     }
 };
 
-// NEU: Initialer Brückenschlag zum Desktop-Client (direkt unter dem Save-Block einfügen)
+// Brückenschlag zum Desktop-Client
 if (window.electronAPI) {
-    // Sende beim Laden direkt die gespeicherten Tasten an Windows
     const electronKeys = {};
     Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current);
     window.electronAPI.updateHotkeys(electronKeys);
 
-    // Höre auf globale Tastendrücke aus dem Windows-Hintergrund
     window.electronAPI.onHotkey((action) => {
-        // Simuliere einfach einen physischen Klick auf den zugewiesenen Button
         const targetBtn = document.getElementById(hotkeys[action].btn);
         if (targetBtn) {
             targetBtn.click();
@@ -660,18 +640,17 @@ if (window.electronAPI) {
 
 // 4. Globaler Listener (Führt die Aktionen aus)
 document.addEventListener("keydown", (e) => {
-    // Ignorieren, wenn wir im Chat tippen, einen Raum erstellen oder gerade einen Hotkey belegen
     if (["messageInput", "usernameInput", "passwordInput", "newRoomInput"].includes(document.activeElement.id) || 
         document.activeElement.classList.contains("hotkey-capture")) return;
 
+    // NEU GEFIXT: Wenn e.key null ist, abbrechen!
+    if (!e.key) return;
     const pressedKey = e.key.toLowerCase();
 
-    // Alle konfigurierten Hotkeys durchgehen
     Object.keys(hotkeys).forEach(key => {
         if (hotkeys[key].current && pressedKey === hotkeys[key].current.toLowerCase()) {
             e.preventDefault();
 
-            // Sonderfall: Recording (braucht Uplink-Check)
             if (key === "rec") {
                 if (globalScreenStream && globalScreenStream.active) {
                     toggleRecordingState();
@@ -679,7 +658,6 @@ document.addEventListener("keydown", (e) => {
                     showToast("ERROR: UPLINK REQUIRED", "error");
                 }
             } else {
-                // Normaler Fall: Simuliere einen Mausklick auf den entsprechenden Button
                 const targetBtn = document.getElementById(hotkeys[key].btn);
                 if (targetBtn) targetBtn.click();
             }
@@ -699,12 +677,10 @@ async function initUplink() {
             audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
         });
 
-        // UI Feedback (Gelb = Standby)
         recBtn.style.color = "#ffe600"; 
         recBtn.style.borderColor = "#ffe600"; 
         recBtn.style.boxShadow = "0 0 10px #ffe600";
         
-        // REPARATUR: Statt 'playSound' nutzen wir direktes Audio
         new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
         
         globalScreenStream.getVideoTracks()[0].onended = () => { resetRecordingUI(); globalScreenStream = null; };
@@ -726,14 +702,12 @@ function startRecordingProcess() {
     if (!globalScreenStream) { showToast("ERROR: NO UPLINK FOR RECORDING", "error"); return; }
     recordedChunks = [];
 
-    // Master-Mixer laden
     if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
 
     const dest = globalAudioCtx.createMediaStreamDestination();
     let hasAudio = false;
 
-    // Spur 1: Spiel/System
     const screenAudioTracks = globalScreenStream.getAudioTracks();
     if (screenAudioTracks.length > 0) {
         const sysSource = globalAudioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
@@ -744,7 +718,6 @@ function startRecordingProcess() {
         hasAudio = true;
     }
 
-    // Spur 2: Mikrofon (Egal ob gefiltert oder normal)
     if (localStream && localStream.getAudioTracks().length > 0) {
         const currentMicTrack = localStream.getAudioTracks()[0];
         if (currentMicTrack.readyState === 'live') {
@@ -757,42 +730,17 @@ function startRecordingProcess() {
         }
     }
 
-    const tracks = [globalScreenStream.getVideoTracks()[0]];
-    if (hasAudio) tracks.push(dest.stream.getAudioTracks()[0]);
-    const combinedStream = new MediaStream(tracks);
-    
-    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
-                    ? { mimeType: 'video/webm;codecs=vp9,opus' } : { mimeType: 'video/webm' };
-
-    try { 
-        mediaRecorder = new MediaRecorder(combinedStream, options); 
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-        mediaRecorder.onstop = () => { 
-            saveFile(); 
-            // WICHTIG: AudioCtx NICHT schließen, sonst stirbt der Radio-Filter!
-            activeMicSource = null; 
-            recMicGain = null; 
-        };
-        mediaRecorder.start(1000); 
-
-        recBtn.classList.add("recording");
-        recBtn.style.color = "#ff0000"; recBtn.style.borderColor = "#ff0000"; recBtn.style.boxShadow = "0 0 15px #ff0000";
-        new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
-        showToast("MISSION LOG: RECORDING STARTED");
-    } catch (err) { 
-        console.error(err); showToast("ERROR: RECORDER FAILED", "error");
+    // NEU GEFIXT: Nur Video auslesen, wenn es existiert!
+    const tracks = [];
+    if (globalScreenStream && globalScreenStream.getVideoTracks().length > 0) {
+        tracks.push(globalScreenStream.getVideoTracks()[0]);
     }
-}
-
-    // --- KOMBINATION: Video + Mix-Audio ---
-    const tracks = [globalScreenStream.getVideoTracks()[0]];
     if (hasAudio) {
         tracks.push(dest.stream.getAudioTracks()[0]);
     }
 
     const combinedStream = new MediaStream(tracks);
     
-    // Beste verfügbare Qualität wählen
     const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
                     ? { mimeType: 'video/webm;codecs=vp9,opus' } 
                     : { mimeType: 'video/webm' };
@@ -806,19 +754,17 @@ function startRecordingProcess() {
 
         mediaRecorder.onstop = () => { 
             saveFile(); 
-            audioCtx.close(); // Ressourcen freigeben
+            activeMicSource = null; 
+            recMicGain = null; 
         };
 
-        // Startet die Aufnahme (Datenpakete alle 1 Sekunde)
         mediaRecorder.start(1000); 
 
-        // UI-Update
         recBtn.classList.add("recording");
-        recBtn.style.color = "#ff0000"; // Leuchtend Rot während der Aufnahme
+        recBtn.style.color = "#ff0000";
         recBtn.style.borderColor = "#ff0000";
         recBtn.style.boxShadow = "0 0 15px #ff0000";
 
-        // Akustisches Feedback
         new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
         showToast("MISSION LOG: RECORDING STARTED");
 
@@ -826,6 +772,7 @@ function startRecordingProcess() {
         console.error("MediaRecorder konnte nicht gestartet werden:", err);
         showToast("ERROR: RECORDER FAILED", "error");
     }
+}
 
 function saveFile() {
     resetRecordingUI();
@@ -857,14 +804,11 @@ if ('mediaSession' in navigator) {
 }
 
 // --- VOICE COMMAND SYSTEM (ROBUST) ---
-let recognition; 
 function initVoiceCommands() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!recognition) return;
 
-    if (recognition) try { recognition.stop(); } catch(e){}
+    try { recognition.stop(); } catch(e){}
     
-    recognition = new SpeechRecognition();
     recognition.continuous = true; 
     recognition.lang = 'de-DE'; 
     recognition.interimResults = false;
@@ -881,7 +825,6 @@ function initVoiceCommands() {
         
         if (["messageInput", "usernameInput", "passwordInput"].includes(document.activeElement.id)) return;
 
-        // Deutsch & Englisch Befehle
         if ((cmd.includes("aufnahme starten") || cmd.includes("system start") || cmd.includes("record start"))) {
             if(globalScreenStream && !recBtn.classList.contains("recording")) {
                 toggleRecordingState();
@@ -932,11 +875,10 @@ document.addEventListener("click", (e) => {
 let isRadioActive = false;
 let rawAudioTrack = null;
 let radioAudioTrack = null;
-let radioAudioCtx = null;
+let globalAudioCtx = null;
 let activeMicSource = null;
 let recMicGain = null;
 
-// Helper: Erzeugt künstliche Verzerrung (Distortion)
 function makeDistortionCurve(amount) {
     let k = typeof amount === 'number' ? amount : 50,
         n_samples = 44100, curve = new Float32Array(n_samples),
@@ -948,12 +890,10 @@ function makeDistortionCurve(amount) {
     return curve;
 }
 
-// Initialisiert den Filter (wird beim Kamera-Start gerufen)
 function initRadioFilter() {
     if (!localStream || localStream.getAudioTracks().length === 0) return;
     rawAudioTrack = localStream.getAudioTracks()[0];
     
-    // Master-Mixer nutzen oder erstellen
     if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
 
@@ -981,9 +921,7 @@ function initRadioFilter() {
     radioAudioTrack = dest.stream.getAudioTracks()[0];
 }
 
-// Toggle-Logik
 document.getElementById("radioBtn").onclick = () => {
-    // Check, ob Uplink da ist
     if (!localStream || !localStream.getAudioTracks()[0]) {
         if(typeof showToast === "function") showToast("ACTIVATE CAMERA FIRST!", "error");
         return;
@@ -996,7 +934,6 @@ document.getElementById("radioBtn").onclick = () => {
     
     const trackToSend = isRadioActive ? radioAudioTrack : rawAudioTrack;
 
-    // 1. Live-Stream für dich und die Peers updaten
     localStream.removeTrack(localStream.getAudioTracks()[0]);
     localStream.addTrack(trackToSend);
 
@@ -1005,11 +942,10 @@ document.getElementById("radioBtn").onclick = () => {
         if (sender) sender.replaceTrack(trackToSend);
     }
 
-    // 2. LIVE-UPDATE FÜR DIE AUFNAHME (Falls gerade eine läuft!)
     if (globalAudioCtx && activeMicSource && recMicGain && trackToSend.readyState === 'live') {
-        activeMicSource.disconnect(); // Alte Spur abklemmen
+        activeMicSource.disconnect(); 
         activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([trackToSend]));
-        activeMicSource.connect(recMicGain); // Neue, gefilterte Spur live einklemmen
+        activeMicSource.connect(recMicGain); 
         console.log("Aufnahme-Mixer: Audio-Spur live gewechselt!");
     }
 
@@ -1025,29 +961,22 @@ let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
 
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Verhindert, dass der Browser seinen eigenen kleinen Banner anzeigt
     e.preventDefault();
-    // Speichert das Event für später
     deferredPrompt = e;
-    // Zeigt deinen Cyberpunk-Download-Button an
     if (installBtn) installBtn.style.display = 'block';
 });
 
 if (installBtn) {
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) return;
-        // Zeigt den Installations-Dialog
         deferredPrompt.prompt();
-        // Warte auf die Entscheidung des Nutzers
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`User response to the install prompt: ${outcome}`);
-        // Prompt ist verbraucht
         deferredPrompt = null;
         installBtn.style.display = 'none';
     });
 }
 
-// Prüfen, ob die App bereits installiert ist
 window.addEventListener('appinstalled', () => {
     console.log('PWA was installed');
     if (installBtn) installBtn.style.display = 'none';
@@ -1057,16 +986,13 @@ window.addEventListener('appinstalled', () => {
 // --- UPGRADE: MISSION CLOCK & TELEMETRY ---
 let roomStartTime = Date.now();
 
-// Uhr & Timer aktualisieren
 setInterval(() => {
     const now = new Date();
     
-    // 1. Lokale Uhrzeit (SYS.TIME)
     const timeStr = now.toLocaleTimeString('de-DE', { hour12: false });
     const localTimeEl = document.getElementById("localTimeDisplay");
     if (localTimeEl) localTimeEl.innerText = timeStr;
 
-    // 2. Mission Uptime
     const diffSeconds = Math.floor((now - roomStartTime) / 1000);
     const hrs = String(Math.floor(diffSeconds / 3600)).padStart(2, '0');
     const mins = String(Math.floor((diffSeconds % 3600) / 60)).padStart(2, '0');
@@ -1074,9 +1000,8 @@ setInterval(() => {
     
     const uptimeEl = document.getElementById("uptimeDisplay");
     if (uptimeEl) uptimeEl.innerText = `${hrs}:${mins}:${secs}`;
-}, 1000); // Jede Sekunde
+}, 1000);
 
-// Uptime Resetten, wenn wir den Raum wechseln oder in die Lobby gezwungen werden
 socket.on("join", () => { roomStartTime = Date.now(); });
 socket.on("force-lobby", () => { roomStartTime = Date.now(); });
 
@@ -1085,25 +1010,19 @@ const lightbox = document.getElementById('imageLightbox');
 const lightboxImg = document.getElementById('lightboxImg');
 const closeLightboxBtn = document.querySelector('.close-lightbox');
 
-// Funktion zum Öffnen (wird direkt im HTML-String des Chats aufgerufen)
-// Wir machen sie global verfügbar (window.), damit der onclick-Handler im HTML sie findet.
 window.openLightbox = (src) => {
     lightboxImg.src = src;
-    lightbox.style.display = 'flex'; // Flex zentriert den Inhalt automatisch
+    lightbox.style.display = 'flex'; 
 };
 
-// Schließen-Logik
 if (closeLightboxBtn) {
     closeLightboxBtn.onclick = () => lightbox.style.display = 'none';
 }
 
-// Klick auf den dunklen Hintergrund schließt auch
 lightbox.onclick = (e) => {
-    // Nur schließen, wenn man auf den Hintergrund klickt, nicht auf das Bild selbst
     if (e.target === lightbox) lightbox.style.display = 'none';
 };
 
-// Escape-Taste schließt auch (Komfort-Funktion)
 document.addEventListener('keydown', (e) => {
    if(e.key === "Escape" && lightbox.style.display === 'flex') {
        lightbox.style.display = 'none';
@@ -1114,11 +1033,10 @@ document.addEventListener('keydown', (e) => {
 const savePathInput = document.getElementById('savePathInput');
 const selectFolderBtn = document.getElementById('selectFolderBtn');
 
-// Pfad beim Start aus dem lokalen Speicher laden
 const storedPath = localStorage.getItem('customSavePath');
 if (storedPath && window.electronAPI) {
     if (savePathInput) savePathInput.value = storedPath;
-    window.electronAPI.setSavePath(storedPath); // Dem Desktop-Client den Pfad übergeben
+    window.electronAPI.setSavePath(storedPath); 
 }
 
 if (selectFolderBtn) {
@@ -1133,7 +1051,6 @@ if (selectFolderBtn) {
             }
         };
     } else {
-        // Fallback für Nutzer, die nur im Browser sind
         selectFolderBtn.style.display = 'none';
         if (savePathInput) savePathInput.value = "Browser-Downloads (Nicht änderbar)";
     }
@@ -1145,7 +1062,6 @@ if (snapBtn) {
     snapBtn.onclick = () => {
         if (window.electronAPI) {
             window.electronAPI.takeScreenshot();
-            // Blitzeffekt auf dem Bildschirm
             const flash = document.createElement('div');
             flash.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:white; z-index:9999; pointer-events:none; transition: opacity 0.3s ease; opacity: 0.8;";
             document.body.appendChild(flash);
@@ -1157,7 +1073,6 @@ if (snapBtn) {
     };
 }
 
-// Hört auf die Bestätigung vom Desktop-Client, dass das Bild gespeichert wurde
 if (window.electronAPI) {
     window.electronAPI.onNotify((msg) => {
         showToast(msg);
