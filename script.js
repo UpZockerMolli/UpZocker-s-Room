@@ -600,12 +600,10 @@ if (saveBtn) {
     };
 }
 
-// Brückenschlag zum Desktop-Client (initial) - MIT VERZÖGERUNG
+// Brückenschlag zum Desktop-Client (initial)
 if (window.electronAPI) {
-    // 1 Sekunde warten, damit Electron im Hintergrund zu 100% hochgefahren ist
-    setTimeout(() => {
-        toggleElectronHotkeys(true);
-    }, 1000);
+    // WICHTIG: Die Webseite funkt Electron beim Starten jetzt NICHT mehr dazwischen!
+    // Electron hat die Tasten im Hintergrund bereits nativ von der Festplatte geladen.
 
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
