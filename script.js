@@ -264,9 +264,10 @@ let pipInterval = null;
 document.getElementById("popoutBtn").onclick = async () => { 
     const c=document.getElementById("pipCanvas"), x=c.getContext("2d"), p=document.getElementById("pipVideo"); 
     
-    // Einmal schwarz füllen, damit der Stream nicht leer startet
     x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
-    p.srcObject=c.captureStream(); 
+    
+    // WICHTIG: Die (30) MUSS hier stehen, sonst sendet das Canvas keine Bilder ans PiP-Fenster!
+    p.srcObject=c.captureStream(30); 
     
     try {
         await p.play();
@@ -280,9 +281,8 @@ document.getElementById("popoutBtn").onclick = async () => {
                 const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
                 v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
             }
-            // Stoppe das Intervall, wenn das PiP-Fenster geschlossen wird
             if (document.pictureInPictureElement !== p) clearInterval(pipInterval);
-        }, 33); // 33ms = 30 Bilder pro Sekunde (Läuft auch im Hintergrund flüssig weiter!)
+        }, 33);
     } catch(e) { console.error("PiP Fehler:", e); }
 };
 
@@ -728,25 +728,22 @@ function startRecordingProcess() {
 
     const combinedStream = new MediaStream(tracks);
     
-    // NEU: Hardwarebeschleunigung (H.264) erzwingen, damit die CPU nicht blockiert!
-    let options;
-    if (MediaRecorder.isTypeSupported('video/webm; codecs=h264')) {
-        options = { mimeType: 'video/webm; codecs=h264', videoBitsPerSecond: 5000000 };
-    } else if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8')) {
-        options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 5000000 };
-    } else {
-        options = { mimeType: 'video/webm', videoBitsPerSecond: 5000000 };
-    }
+    // Wir lassen den Browser den schonendsten Codec wählen und drosseln die Bitrate leicht (3 Mbit/s reicht massig für gute Qualität)
+    const options = { mimeType: 'video/webm', videoBitsPerSecond: 3000000 };
 
-    try {
+    try { 
         mediaRecorder = new MediaRecorder(combinedStream, options); 
+        
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => { 
             saveFile(); 
             activeMicSource = null; 
             recMicGain = null; 
         };
-        mediaRecorder.start(1000); 
+        
+        // WICHTIG: Keine 1000ms Häppchen mehr! Klammer bleibt leer!
+        // Der Browser regelt das jetzt komplett lautlos im Hintergrund.
+        mediaRecorder.start(); 
 
         recBtn.classList.add("recording");
         recBtn.style.color = "#ff0000";
