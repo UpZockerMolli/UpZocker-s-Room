@@ -262,24 +262,27 @@ document.getElementById("shareBtn").onclick = async () => {
 // PiP / Popout
 document.getElementById("popoutBtn").onclick = async () => { 
     const c=document.getElementById("pipCanvas"), x=c.getContext("2d"), p=document.getElementById("pipVideo"); 
-    p.srcObject=c.captureStream(); 
+    // Capture Stream auf 60 FPS zwingen
+    p.srcObject=c.captureStream(60); 
     p.onloadedmetadata=async()=>{try{await p.play();await p.requestPictureInPicture();}catch(e){}}; 
-    setInterval(()=>{ 
-        const v=Array.from(document.querySelectorAll("#videoGrid video")); 
-        x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
-        if(!v.length)return; 
-        const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
-        v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
-    },100); 
+    
+    // NEU: Grafikbeschleunigte, latenzfreie Render-Schleife
+    const drawPiP = () => {
+        const v = Array.from(document.querySelectorAll("#videoGrid video")); 
+        x.fillStyle = "#05070d"; x.fillRect(0,0,c.width,c.height); 
+        if(v.length > 0) { 
+            const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
+            v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
+        }
+        // Nur weiterzeichnen, wenn das PiP-Fenster auch wirklich offen ist
+        if (document.pictureInPictureElement === p) {
+            requestAnimationFrame(drawPiP);
+        }
+    };
+    
+    // Schleife starten, sobald das Fenster aufgeht
+    p.addEventListener('enterpictureinpicture', () => requestAnimationFrame(drawPiP));
 };
-function drawCover(ctx,img,x,y,w,h){
-    if(!img.videoWidth)return;
-    const iR=img.videoWidth/img.videoHeight,dR=w/h;
-    let sx,sy,sw,sh;
-    if(iR>dR){sw=img.videoHeight*dR;sh=img.videoHeight;sx=(img.videoWidth-sw)/2;sy=0;}
-    else{sw=img.videoWidth;sh=img.videoWidth/dR;sx=0;sy=(img.videoHeight-sh)/2;}
-    ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
-}
 
 // Video Node
 function addVideoNode(id, name, stream, isLocal) {
@@ -511,95 +514,27 @@ document.getElementById("configBtn").onclick = () => {
     toggleElectronHotkeys(!isOpening);
 };
 
-// 1. Laden aus dem LocalStorage
+// 1. Laden aus dem LocalStorage (ROBUST)
 Object.keys(hotkeys).forEach(key => {
-    const stored = localStorage.getItem(`hotkey_${key}`);
-    hotkeys[key].current = stored !== null ? stored : hotkeys[key].default;
+    let stored = localStorage.getItem(`hotkey_${key}`);
+    // Manchmal speichert JS versehentlich das Wort "null" als Text. Das filtern wir hier raus.
+    if (stored === "null" || stored === null) stored = ""; 
+    hotkeys[key].current = stored !== "" ? stored : hotkeys[key].default;
+    
     const inputEl = document.getElementById(hotkeys[key].id);
     if (inputEl) inputEl.value = hotkeys[key].current;
 });
 
-// 2. Eingabe-Logik für alle Input-Felder & Lösch-Buttons
-document.querySelectorAll(".hotkey-capture").forEach(input => {
-    input.addEventListener("keydown", (e) => {
-        e.preventDefault();
-        if (e.key === "Escape" || e.key === "Backspace" || e.key === "Delete") {
-            input.value = "";
-        } else {
-            input.value = e.key;
-        }
-    });
-
-    const wrapper = input.parentElement;
-    wrapper.style.display = "flex";
-    wrapper.style.gap = "5px";
-    input.style.flex = "1"; 
-    
-    const clearBtn = document.createElement("button");
-    clearBtn.type = "button"; 
-    clearBtn.innerHTML = '<i class="fas fa-times"></i>';
-    clearBtn.title = "Hotkey deaktivieren";
-    
-    clearBtn.style.cssText = "background: rgba(255,0,0,0.1); border: 1px solid #550000; color: #ff0000; width: 45px; cursor: pointer; border-radius: 4px; transition: 0.2s; display: flex; justify-content: center; align-items: center; font-size: 1.1em;";
-    
-    clearBtn.onmouseover = () => { 
-        clearBtn.style.background = "#ff0000"; 
-        clearBtn.style.color = "#000"; 
-        clearBtn.style.boxShadow = "0 0 10px #ff0000"; 
-    };
-    clearBtn.onmouseout = () => { 
-        clearBtn.style.background = "rgba(255,0,0,0.1)"; 
-        clearBtn.style.color = "#ff0000"; 
-        clearBtn.style.boxShadow = "none"; 
-    };
-    
-    clearBtn.onclick = () => {
-        input.value = ""; 
-    };
-    
-    wrapper.appendChild(clearBtn);
-});
-
-// 3. Speichern aller Hotkeys
-const saveBtn = document.getElementById("saveConfigBtn");
-
-if (saveBtn) {
-    saveBtn.onclick = (e) => {
-        // WICHTIG: Verhindert, dass der Browser beim Klicken versehentlich die Seite neu lädt
-        e.preventDefault(); 
-        
-        // 1. Alle Werte auslesen und speichern
-        Object.keys(hotkeys).forEach(key => {
-            const inputEl = document.getElementById(hotkeys[key].id);
-            if (inputEl) {
-                hotkeys[key].current = inputEl.value;
-                localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
-            }
-        });
-        
-        // 2. Das Menü schließen
-        if (configPanel) {
-            configPanel.style.display = "none";
-        }
-        
-        // 3. Die gewünschte Push-Benachrichtigung anzeigen
-        showToast("Config saved");
-
-        // 4. Die neuen Hotkeys an den Windows-Client (Electron) senden und scharfschalten
-        toggleElectronHotkeys(true);
-    };
-} else {
-    console.error("FEHLER: Der Save-Button (saveConfigBtn) wurde im HTML nicht gefunden!");
-}
-
-// Brückenschlag zum Desktop-Client (initial)
+// Brückenschlag zum Desktop-Client (initial) - MIT VERZÖGERUNG
 if (window.electronAPI) {
-    toggleElectronHotkeys(true);
+    // Wir warten 1 Sekunde, damit Electron im Hintergrund zu 100% hochgefahren ist
+    setTimeout(() => {
+        toggleElectronHotkeys(true);
+    }, 1000);
+
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
-        if (targetBtn) {
-            targetBtn.click();
-        }
+        if (targetBtn) targetBtn.click();
     });
 }
 
@@ -703,9 +638,18 @@ function startRecordingProcess() {
     }
 
     const combinedStream = new MediaStream(tracks);
-    const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? { mimeType: 'video/webm;codecs=vp9,opus' } : { mimeType: 'video/webm' };
+    
+    // NEU: Hardwarebeschleunigung (H.264) erzwingen, damit die CPU nicht blockiert!
+    let options;
+    if (MediaRecorder.isTypeSupported('video/webm; codecs=h264')) {
+        options = { mimeType: 'video/webm; codecs=h264', videoBitsPerSecond: 5000000 };
+    } else if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8')) {
+        options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 5000000 };
+    } else {
+        options = { mimeType: 'video/webm', videoBitsPerSecond: 5000000 };
+    }
 
-    try { 
+    try {
         mediaRecorder = new MediaRecorder(combinedStream, options); 
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => { 
