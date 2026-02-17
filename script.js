@@ -486,7 +486,7 @@ const configPanel = document.getElementById("configPanel");
 
 const hotkeys = {
     rec:    { id: "hotkeyRec",    btn: "recordBtn",  default: "",   current: "" },
-    snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" }, // NEU: Screenshot Hotkey integriert!
+    snap:   { id: "hotkeySnap",   btn: "snapBtn",    default: "",   current: "" }, 
     radio:  { id: "hotkeyRadio",  btn: "radioBtn",   default: "",   current: "" },
     afk:    { id: "hotkeyAfk",    btn: "afkBtn",     default: "",   current: "" },
     mute:   { id: "hotkeyMute",   btn: "muteBtn",    default: "",   current: "" },
@@ -496,7 +496,7 @@ const hotkeys = {
     expand: { id: "hotkeyExpand", btn: "expandBtn",  default: "",   current: "" }
 };
 
-// NEU: Helper um Electron Hotkeys temporär zu pausieren
+// Helper um Electron Hotkeys temporär zu pausieren
 function toggleElectronHotkeys(enable) {
     if (!window.electronAPI) return;
     if (enable) {
@@ -508,6 +508,7 @@ function toggleElectronHotkeys(enable) {
     }
 }
 
+// Config Panel öffnen/schließen
 document.getElementById("configBtn").onclick = () => {
     const isOpening = configPanel.style.display === "none";
     configPanel.style.display = isOpening ? "block" : "none";
@@ -517,7 +518,7 @@ document.getElementById("configBtn").onclick = () => {
 // 1. Laden aus dem LocalStorage (ROBUST)
 Object.keys(hotkeys).forEach(key => {
     let stored = localStorage.getItem(`hotkey_${key}`);
-    // Manchmal speichert JS versehentlich das Wort "null" als Text. Das filtern wir hier raus.
+    // Verhindert, dass das Wort "null" als Taste gespeichert wird
     if (stored === "null" || stored === null) stored = ""; 
     hotkeys[key].current = stored !== "" ? stored : hotkeys[key].default;
     
@@ -525,9 +526,74 @@ Object.keys(hotkeys).forEach(key => {
     if (inputEl) inputEl.value = hotkeys[key].current;
 });
 
+// 2. Eingabe-Logik für alle Input-Felder & Lösch-Buttons
+document.querySelectorAll(".hotkey-capture").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+        e.preventDefault();
+        if (e.key === "Escape" || e.key === "Backspace" || e.key === "Delete") {
+            input.value = "";
+        } else {
+            input.value = e.key;
+        }
+    });
+
+    const wrapper = input.parentElement;
+    wrapper.style.display = "flex";
+    wrapper.style.gap = "5px";
+    input.style.flex = "1"; 
+    
+    // Verhindern, dass wir das rote X versehentlich mehrfach hinzufügen
+    if (!wrapper.querySelector('.clear-hotkey-btn')) {
+        const clearBtn = document.createElement("button");
+        clearBtn.type = "button"; 
+        clearBtn.className = "clear-hotkey-btn"; 
+        clearBtn.innerHTML = '<i class="fas fa-times"></i>';
+        clearBtn.title = "Hotkey deaktivieren";
+        
+        clearBtn.style.cssText = "background: rgba(255,0,0,0.1); border: 1px solid #550000; color: #ff0000; width: 45px; cursor: pointer; border-radius: 4px; transition: 0.2s; display: flex; justify-content: center; align-items: center; font-size: 1.1em;";
+        
+        clearBtn.onmouseover = () => { 
+            clearBtn.style.background = "#ff0000"; 
+            clearBtn.style.color = "#000"; 
+            clearBtn.style.boxShadow = "0 0 10px #ff0000"; 
+        };
+        clearBtn.onmouseout = () => { 
+            clearBtn.style.background = "rgba(255,0,0,0.1)"; 
+            clearBtn.style.color = "#ff0000"; 
+            clearBtn.style.boxShadow = "none"; 
+        };
+        
+        clearBtn.onclick = () => {
+            input.value = ""; 
+        };
+        
+        wrapper.appendChild(clearBtn);
+    }
+});
+
+// 3. Speichern aller Hotkeys (ROBUST)
+const saveBtn = document.getElementById("saveConfigBtn");
+if (saveBtn) {
+    saveBtn.onclick = (e) => {
+        e.preventDefault(); 
+        
+        Object.keys(hotkeys).forEach(key => {
+            const inputEl = document.getElementById(hotkeys[key].id);
+            if (inputEl) {
+                hotkeys[key].current = inputEl.value;
+                localStorage.setItem(`hotkey_${key}`, hotkeys[key].current);
+            }
+        });
+        
+        if (configPanel) configPanel.style.display = "none";
+        showToast("Config saved");
+        toggleElectronHotkeys(true);
+    };
+}
+
 // Brückenschlag zum Desktop-Client (initial) - MIT VERZÖGERUNG
 if (window.electronAPI) {
-    // Wir warten 1 Sekunde, damit Electron im Hintergrund zu 100% hochgefahren ist
+    // 1 Sekunde warten, damit Electron im Hintergrund zu 100% hochgefahren ist
     setTimeout(() => {
         toggleElectronHotkeys(true);
     }, 1000);
