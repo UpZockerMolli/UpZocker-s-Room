@@ -259,29 +259,31 @@ document.getElementById("shareBtn").onclick = async () => {
     } 
 };
 
-// PiP / Popout
+// PiP / Popout Fix
+let pipInterval = null;
 document.getElementById("popoutBtn").onclick = async () => { 
     const c=document.getElementById("pipCanvas"), x=c.getContext("2d"), p=document.getElementById("pipVideo"); 
-    // Capture Stream auf 60 FPS zwingen
-    p.srcObject=c.captureStream(60); 
-    p.onloadedmetadata=async()=>{try{await p.play();await p.requestPictureInPicture();}catch(e){}}; 
     
-    // NEU: Grafikbeschleunigte, latenzfreie Render-Schleife
-    const drawPiP = () => {
-        const v = Array.from(document.querySelectorAll("#videoGrid video")); 
-        x.fillStyle = "#05070d"; x.fillRect(0,0,c.width,c.height); 
-        if(v.length > 0) { 
-            const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
-            v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
-        }
-        // Nur weiterzeichnen, wenn das PiP-Fenster auch wirklich offen ist
-        if (document.pictureInPictureElement === p) {
-            requestAnimationFrame(drawPiP);
-        }
-    };
+    // Einmal schwarz füllen, damit der Stream nicht leer startet
+    x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
+    p.srcObject=c.captureStream(); 
     
-    // Schleife starten, sobald das Fenster aufgeht
-    p.addEventListener('enterpictureinpicture', () => requestAnimationFrame(drawPiP));
+    try {
+        await p.play();
+        await p.requestPictureInPicture();
+        
+        if (pipInterval) clearInterval(pipInterval);
+        pipInterval = setInterval(() => {
+            const v=Array.from(document.querySelectorAll("#videoGrid video")); 
+            x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
+            if(v.length > 0){ 
+                const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
+                v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
+            }
+            // Stoppe das Intervall, wenn das PiP-Fenster geschlossen wird
+            if (document.pictureInPictureElement !== p) clearInterval(pipInterval);
+        }, 33); // 33ms = 30 Bilder pro Sekunde (Läuft auch im Hintergrund flüssig weiter!)
+    } catch(e) { console.error("PiP Fehler:", e); }
 };
 
 // Video Node
@@ -635,6 +637,20 @@ document.addEventListener("keydown", (e) => {
             }
         }
     });
+});
+
+// --- NEU: HÖRT AUF ELECTRON (HOTKEY-SYNC) ---
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'SYNC_HOTKEYS') {
+        const savedKeys = event.data.payload;
+        Object.keys(savedKeys).forEach(key => {
+            if (hotkeys[key]) {
+                hotkeys[key].current = savedKeys[key];
+                const inputEl = document.getElementById(hotkeys[key].id);
+                if (inputEl) inputEl.value = savedKeys[key];
+            }
+        });
+    }
 });
 
 recBtn.onclick = async () => {
