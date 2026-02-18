@@ -259,31 +259,57 @@ document.getElementById("shareBtn").onclick = async () => {
     } 
 };
 
-// PiP / Popout Fix
+// PiP / Popout Fix - Anti-Selbstzerstörungs-Modus
 let pipInterval = null;
 document.getElementById("popoutBtn").onclick = async () => { 
-    const c=document.getElementById("pipCanvas"), x=c.getContext("2d"), p=document.getElementById("pipVideo"); 
+    const c = document.getElementById("pipCanvas");
+    const x = c.getContext("2d");
+    const p = document.getElementById("pipVideo"); 
     
-    x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
+    // 1. Zwingende HD-Auflösung setzen, damit das Canvas nicht 0x0 Pixel groß ist
+    c.width = 1280;
+    c.height = 720;
     
-    // WICHTIG: Die (30) MUSS hier stehen, sonst sendet das Canvas keine Bilder ans PiP-Fenster!
-    p.srcObject=c.captureStream(30); 
+    x.fillStyle = "#05070d"; 
+    x.fillRect(0, 0, c.width, c.height); 
     
+    p.srcObject = c.captureStream(30); 
+    p.muted = true; // WICHTIG: Chrome blockiert oft das Bild, wenn das Video nicht stummgeschaltet ist!
+    
+    // 2. Den Zeichen-Motor STARTEN
+    if (pipInterval) clearInterval(pipInterval);
+    pipInterval = setInterval(() => {
+        const v = Array.from(document.querySelectorAll("#videoGrid video")); 
+        x.fillStyle = "#05070d"; 
+        x.fillRect(0, 0, c.width, c.height); 
+        
+        if (v.length > 0) { 
+            const r = v.length > 3 ? 2 : 1;
+            const co = Math.ceil(v.length / r);
+            const w = c.width / co;
+            const h = c.height / r; 
+            
+            v.forEach((el, i) => { 
+                try {
+                    // Robuster Standard-Zeichenbefehl
+                    x.drawImage(el, (i % co) * w, Math.floor(i / co) * h, w, h);
+                } catch(err) {} 
+            }); 
+        }
+    }, 33);
+    
+    // 3. Erst PiP-Fenster anfordern, wenn die Bilder schon laufen!
     try {
         await p.play();
         await p.requestPictureInPicture();
-        
-        if (pipInterval) clearInterval(pipInterval);
-        pipInterval = setInterval(() => {
-            const v=Array.from(document.querySelectorAll("#videoGrid video")); 
-            x.fillStyle="#05070d"; x.fillRect(0,0,c.width,c.height); 
-            if(v.length > 0){ 
-                const r=v.length>3?2:1, co=Math.ceil(v.length/r), w=c.width/co, h=c.height/r; 
-                v.forEach((el,i)=>{ drawCover(x,el,(i%co)*w,Math.floor(i/co)*h,w,h); }); 
-            }
-            if (document.pictureInPictureElement !== p) clearInterval(pipInterval);
-        }, 33);
-    } catch(e) { console.error("PiP Fehler:", e); }
+    } catch(e) { 
+        console.error("PiP Fehler:", e); 
+    }
+    
+    // 4. NEU: Den Motor erst abschalten, wenn der User das Fenster WIRKLICH über das "X" schließt
+    p.onleavepictureinpicture = () => {
+        clearInterval(pipInterval);
+    };
 };
 
 // Video Node
