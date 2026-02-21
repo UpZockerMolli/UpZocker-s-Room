@@ -1019,31 +1019,6 @@ document.getElementById("radioBtn").onclick = () => {
     showToast(isRadioActive ? "COMMS: MILITARY RADIO ENABLED" : "COMMS: STANDARD AUDIO");
 };
 
-// --- PWA INSTALLATION LOGIC ---
-let deferredPrompt;
-const installBtn = document.getElementById('installAppBtn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (installBtn) installBtn.style.display = 'block';
-});
-
-if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-    });
-}
-
-window.addEventListener('appinstalled', () => {
-    if (installBtn) installBtn.style.display = 'none';
-    showToast("STATION APP INSTALLED SUCCESSFULLY");
-});
-
 // --- UPGRADE: MISSION CLOCK & TELEMETRY ---
 let roomStartTime = Date.now();
 
