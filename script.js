@@ -628,15 +628,18 @@ if (saveBtn) {
     };
 }
 
-// Brückenschlag zum Desktop-Client (initial)
+// Brückenschlag zum Desktop-Client
 if (window.electronAPI) {
-    // WICHTIG: Die Webseite funkt Electron beim Starten jetzt NICHT mehr dazwischen!
-    // Electron hat die Tasten im Hintergrund bereits nativ von der Festplatte geladen.
-
+    // Button im Client zeigen
+    document.getElementById("configBtn").style.display = "inline-block";
+    
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
         if (targetBtn) targetBtn.click();
     });
+} else {
+    // Button im Browser verstecken
+    document.getElementById("configBtn").style.display = "none";
 }
 
 // 4. Globaler Listener (Führt die Aktionen aus)
