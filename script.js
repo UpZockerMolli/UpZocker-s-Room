@@ -630,33 +630,29 @@ if (saveBtn) {
 
 // --- BRÜCKENSCHLAG ZUM DESKTOP-CLIENT (Tarnkappen-Modus) ---
 if (window.electronAPI) {
-    // 1. Config-Button zeigen (nur im Client)
+    // 1. Config-Button zeigen (zur Sicherheit)
     const configBtn = document.getElementById("configBtn");
     if (configBtn) configBtn.style.display = "inline-block";
 
-    // 2. Invite-Button und Download-Sektion im Client VERSTECKEN
+    // 2. Invite-Button, Download-Sektion UND Installations-Protokoll im Client VERSTECKEN
     const inviteBtn = document.getElementById("inviteBtn");
     if (inviteBtn) inviteBtn.style.display = "none";
     
-    // Wir suchen alle Elemente mit der Klasse "download-section" und verstecken sie
     const downloadSections = document.querySelectorAll(".download-section");
-    downloadSections.forEach(section => {
-        section.style.display = "none";
-    });
+    downloadSections.forEach(section => section.style.display = "none");
+
+    // NEU: Die Briefing-Box (Installation Protocol) wird ebenfalls versteckt
+    const briefingBoxes = document.querySelectorAll(".briefing-box");
+    briefingBoxes.forEach(box => box.style.display = "none");
     
     // 3. Hotkeys aktivieren
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
         if (targetBtn) targetBtn.click();
     });
-} else {
-    // --- WIR SIND IM NORMALEN WEB-BROWSER ---
-    // Config-Button verstecken
-    const configBtn = document.getElementById("configBtn");
-    if (configBtn) configBtn.style.display = "none";
-
-    // Invite-Button und Download-Sektion BLEIBEN SICHTBAR (Standard-HTML-Verhalten greift)
 }
+// Der "else"-Block wurde hier komplett entfernt. 
+// Dadurch greift das Standard-Verhalten und der Config-Button bleibt in der Webversion für alle sichtbar!
 
 // 4. Globaler Listener (Führt die Aktionen aus)
 document.addEventListener("keydown", (e) => {
