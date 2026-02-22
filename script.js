@@ -628,18 +628,34 @@ if (saveBtn) {
     };
 }
 
-// Brückenschlag zum Desktop-Client
+// --- BRÜCKENSCHLAG ZUM DESKTOP-CLIENT (Tarnkappen-Modus) ---
 if (window.electronAPI) {
-    // Button im Client zeigen
-    document.getElementById("configBtn").style.display = "inline-block";
+    // 1. Config-Button zeigen (nur im Client)
+    const configBtn = document.getElementById("configBtn");
+    if (configBtn) configBtn.style.display = "inline-block";
+
+    // 2. Invite-Button und Download-Sektion im Client VERSTECKEN
+    const inviteBtn = document.getElementById("inviteBtn");
+    if (inviteBtn) inviteBtn.style.display = "none";
     
+    // Wir suchen alle Elemente mit der Klasse "download-section" und verstecken sie
+    const downloadSections = document.querySelectorAll(".download-section");
+    downloadSections.forEach(section => {
+        section.style.display = "none";
+    });
+    
+    // 3. Hotkeys aktivieren
     window.electronAPI.onHotkey((action) => {
         const targetBtn = document.getElementById(hotkeys[action].btn);
         if (targetBtn) targetBtn.click();
     });
 } else {
-    // Button im Browser verstecken
-    document.getElementById("configBtn").style.display = "none";
+    // --- WIR SIND IM NORMALEN WEB-BROWSER ---
+    // Config-Button verstecken
+    const configBtn = document.getElementById("configBtn");
+    if (configBtn) configBtn.style.display = "none";
+
+    // Invite-Button und Download-Sektion BLEIBEN SICHTBAR (Standard-HTML-Verhalten greift)
 }
 
 // 4. Globaler Listener (Führt die Aktionen aus)
