@@ -11,6 +11,9 @@ let peers = {};
 let isAfk = false;
 let typingTimeout = null;
 let recStartTime, recTimerInterval;
+let globalAudioCtx = null;
+let activeMicSource = null;
+let recMicGain = null;
 
 // Spracherkennung
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
