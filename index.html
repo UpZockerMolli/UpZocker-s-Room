@@ -7,7 +7,6 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -49,56 +48,9 @@
         <div class="sidebar-header">
             <img src="favicon.png" class="main-logo" alt="Main Logo">
             <h1 class="brand-title">UpZocker's Room</h1>
-            <button id="inviteBtn" class="settings-trigger glitch-btn" title="Copy Invite Link" style="margin-left: 5px;"><i class="fas fa-share-alt"></i></button>
-            <button id="configBtn" class="settings-trigger glitch-btn" title="System Configuration"><i class="fas fa-cog"></i></button>
-        </div>
-
-        
-
-        <div id="configPanel" class="popup-window" style="display:none;">
-            <div class="sb-title">SYSTEM CONFIG</div>
-            <div class="config-scroll-area" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;">
-                
-                <label style="color:#00f5ff; font-size:0.9em;">MISSION LOG (REC):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyRec" class="hotkey-capture" readonly placeholder="Key..." value="F9"></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">Screenshot:</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeySnap" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">CRYO STASIS (AFK):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyAfk" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">RADIO FILTER (FUNK):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyRadio" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">MIKROFON (MUTE):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyMute" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">KAMERA (ON/OFF):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyCam" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">BILDSCHIRM TEILEN:</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyShare" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">POPOUT (PIP):</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyPip" class="hotkey-capture" readonly placeholder="Key..."></div>
-                
-                <label style="color:#00f5ff; font-size:0.9em;">VOLLBILD:</label>
-                <div class="hotkey-input-wrapper"><input type="text" id="hotkeyExpand" class="hotkey-capture" readonly placeholder="Key..."></div>
-
-<hr style="border: 1px dashed rgba(0, 245, 255, 0.3); margin: 20px 0;">
-<div style="margin-bottom: 15px;">
-    <label style="font-size: 0.75em; color: #888; display: block; margin-bottom: 8px;">SPEICHERORT FÜR MEDIEN:</label>
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <button id="selectFolderBtn" type="button" style="background: rgba(0, 245, 255, 0.1); border: 1px solid #00f5ff; color: #00f5ff; padding: 8px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.3s;">
-            <i class="fas fa-folder-open"></i> ORDNER WÄHLEN
-        </button>
-        <span id="savePathDisplay" style="color: #00f5ff; font-family: monospace; font-size: 0.85em; word-break: break-all;">Standard: Downloads</span>
-    </div>
-</div>
-
-                <button id="saveConfigBtn" class="settings-trigger glitch-btn" style="margin-top:15px; background: rgba(0, 245, 255, 0.1); border: 1px solid var(--neon-cyan, #00f5ff); color: var(--neon-cyan, #00f5ff); padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; transition: all 0.3s ease;">SAVE CONFIG</button>
-            </div>
+            <button id="inviteBtn" class="settings-trigger glitch-btn" title="Link kopieren"><i class="fas fa-share-alt"></i></button>
+            
+            <button id="configBtn" class="settings-trigger glitch-btn" title="System Config"><i class="fas fa-cog"></i></button>
         </div>
 
         <hr class="divider">
@@ -111,54 +63,26 @@
         <div class="sidebar-label">ONLINE:</div>
         <div id="userList"></div>
 
-        <button id="installAppBtn" class="glitch-btn" style="display:none; margin-top: 10px; border-color: #ffe600; color: #ffe600; background: rgba(255, 230, 0, 0.1);">
-            <i class="fas fa-download"></i> INSTALL STATION APP
-        </button>
-
         <div class="download-section">
             <p class="telemetry-label">DESKTOP UPLINK</p>
-            <a href="https://drive.google.com/file/d/1Zue0Ln5PtRKRy2bJ9MK4hwrl7o5Xyz8Z/view?usp=drive_link" target="_blank" class="download-btn">
-            <i class="fab fa-windows"></i> DOWNLOAD DESKTOP CLIENT
-        </a>
-        <p style="font-size: 0.6em; color: #888; margin-top: 8px; text-align: center; line-height: 1.2;">
-        <i class="fas fa-exclamation-shield"></i> Hinweis: Google kann große Dateien nicht scannen.<br>
-        Klicke auf der Folgeseite auf "Trotzdem herunterladen".
-        </p>
+            <a href="#" class="download-btn"><i class="fab fa-windows"></i> DOWNLOAD CLIENT</a>
             <span class="version-tag">v1.0.0 GOLD MASTER</span>
         </div>
-
-        <div class="briefing-box">
-    <h3 class="telemetry-label"><i class="fas fa-terminal"></i> INSTALLATION PROTOCOL</h3>
-    
-    <div class="briefing-step">
-        <span class="step-num">01</span>
-        <p><strong>Uplink-Download:</strong> Google Drive meldet evtl., dass die Datei "zu groß für einen Virenscan" ist. Das ist normal für verschlüsselte Clients. Klicke auf <em>"Trotzdem herunterladen"</em>.</p>
     </div>
-
-    <div class="briefing-step">
-        <span class="step-num">02</span>
-        <p><strong>Windows Defender:</strong> Da wir kein 500€ Microsoft-Zertifikat besitzen, warnt Windows vor einem "unbekannten Herausgeber". Klicke auf <u>"Weitere Informationen"</u> und dann auf <u>"Trotzdem ausführen"</u>.</p>
-    </div>
-
-    <div class="briefing-step">
-        <span class="step-num">03</span>
-        <p><strong>System-Init:</strong> Starte die App und konfiguriere deine Hotkeys über das Zahnrad-Symbol. Die Hotkeys funktionieren global, auch wenn du mitten im Gefecht bist.</p>
-    </div>
-
-    <div class="briefing-warning">
-        <i class="fas fa-exclamation-triangle"></i> HINWEIS: Mikrofon-Zugriff muss beim ersten Start gestattet werden!
-    </div>
-</div>
-    </div>
-
-    
 
     <div id="mainSection">
+        
         <div id="telemetryBar">
             <div><span class="tel-label">SYS.TIME:</span> <span id="localTimeDisplay">00:00:00</span></div>
             <div class="tel-divider">//</div>
             <div><span class="tel-label">SECTOR UPTIME:</span> <span id="uptimeDisplay">00:00:00</span></div>
         </div>
+
+        <button id="desktopChatToggle" class="glitch-btn" title="Chat öffnen">
+            <i class="fas fa-comments"></i>
+            <span id="chatNotificationBadge" style="display:none;"></span>
+        </button>
+
         <div id="videoChatSection">
             <div id="videoGrid">
                 <div id="videoPlaceholder">
@@ -172,15 +96,25 @@
             <video id="pipVideo" autoplay muted style="display:none;"></video>
             
             <div id="videoControls" style="display:none;">
-                <button id="afkBtn" class="ctrl glitch-btn" title="Cryo-Stasis (AFK)"><i class="fas fa-snowflake"></i></button>
+                <button id="afkBtn" class="ctrl glitch-btn" title="AFK"><i class="fas fa-snowflake"></i></button>
                 <button id="muteBtn" class="ctrl glitch-btn" title="Mikrofon"><i class="fas fa-microphone"></i></button>
-                <button id="radioBtn" class="ctrl glitch-btn" title="Military Radio Filter"><i class="fas fa-headset"></i></button>
+                <button id="radioBtn" class="ctrl glitch-btn" title="Voice FX Menü"><i class="fas fa-wave-square"></i></button>
                 <button id="recordBtn" class="ctrl glitch-btn" title="Mission Log (REC)"><i class="fas fa-circle"></i></button>
                 <button id="snapBtn" class="ctrl glitch-btn" title="Screenshot erstellen"><i class="fas fa-camera"></i></button>
                 <button id="cameraBtn" class="ctrl glitch-btn" title="Kamera"><i class="fas fa-video"></i></button>
                 <button id="shareBtn" class="ctrl desktop-only glitch-btn" title="Bildschirm teilen"><i class="fas fa-desktop"></i></button>
                 <button id="popoutBtn" class="ctrl desktop-only glitch-btn" title="Popout Modus"><i class="fas fa-th-large"></i></button>
                 <button id="expandBtn" class="ctrl glitch-btn" title="Vollbild"><i class="fas fa-expand"></i></button>
+            </div>
+            <div id="voiceFxMenu" style="display:none;">
+                <div class="vfx-header">VOICE MODULATOR</div>
+                <div class="vfx-grid">
+                    <button class="vfx-btn active" data-effect="none">🚫 NORMAL</button>
+                    <button class="vfx-btn" data-effect="radio">📻 MILITARY</button>
+                    <button class="vfx-btn" data-effect="robot">🤖 ROBOT</button>
+                    <button class="vfx-btn" data-effect="cosmic">👽 COSMIC</button>
+                    <button class="vfx-btn" data-effect="dark">👹 DARK</button>
+                </div>
             </div>
         </div>
     </div>
@@ -247,9 +181,80 @@
 </div>
 
 <div id="imageLightbox" class="lightbox-overlay" style="display:none;">
-        <span class="close-lightbox">&times;</span>
-        <img class="lightbox-content" id="lightboxImg" src="">
+    <span class="close-lightbox">&times;</span>
+    <img class="lightbox-content" id="lightboxImg" src="">
+</div>
+
+<div id="configPanel" class="lightbox-overlay" style="display:none;">
+    <div class="config-box modal-box" style="width: 900px; max-width: 95%; height: 80vh; display: flex; flex-direction: column; padding: 0;">
+        
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>SYSTEM CONFIGURATION</span>
+            <button id="closeConfigBtn" style="background:none; border:none; color:var(--neon-cyan); font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+
+        <div class="config-grid-layout" style="flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            
+            <div class="config-column">
+                <h3 class="telemetry-label" style="border-bottom: 1px solid var(--neon-pink); padding-bottom: 5px; margin-bottom: 15px; color: var(--neon-pink);">
+                    <i class="fas fa-microchip"></i> HARDWARE UPLINK
+                </h3>
+                
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label style="color:#888; font-size:0.8em; display:block; margin-bottom:5px;">VIDEO INPUT</label>
+                    <select id="cameraSelect" class="device-select"><option value="">Suche Geräte...</option></select>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label style="color:#888; font-size:0.8em; display:block; margin-bottom:5px;">AUDIO INPUT</label>
+                    <select id="micSelect" class="device-select"><option value="">Suche Geräte...</option></select>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label style="color:#888; font-size:0.8em; display:block; margin-bottom:5px;">AUDIO OUTPUT</label>
+                    <select id="speakerSelect" class="device-select"><option value="">System Standard</option></select>
+                </div>
+
+                <h3 class="telemetry-label" style="border-bottom: 1px solid var(--neon-pink); padding-bottom: 5px; margin-bottom: 15px; margin-top: 20px; color: var(--neon-pink);">
+                    <i class="fas fa-hdd"></i> DATA STORAGE
+                </h3>
+                
+                <div class="input-group">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="selectFolderBtn" type="button" class="glitch-btn" style="background: rgba(0, 245, 255, 0.1); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-folder-open"></i> ORDNER
+                        </button>
+                        <span id="savePathDisplay" style="font-family: monospace; font-size: 0.8em; color: #666; word-break: break-all;">Standard: Downloads</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-column">
+                <h3 class="telemetry-label" style="border-bottom: 1px solid var(--neon-pink); padding-bottom: 5px; margin-bottom: 15px; color: var(--neon-pink);">
+                    <i class="fas fa-keyboard"></i> KEY BINDINGS
+                </h3>
+                
+                <div class="hotkey-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="hk-row"><label>MISSION LOG (REC)</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyRec" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>SCREENSHOT</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeySnap" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>AFK</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyAfk" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>RADIO FILTER</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyRadio" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>MUTE MIC</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyMute" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>CAMERA TOGGLE</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyCam" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>SCREEN SHARE</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyShare" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>PIP MODE</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyPip" class="hotkey-capture" readonly></div></div>
+                    <div class="hk-row"><label>FULLSCREEN</label><div class="hotkey-input-wrapper"><input type="text" id="hotkeyExpand" class="hotkey-capture" readonly></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding: 15px; border-top: 1px solid rgba(0,245,255,0.2); text-align: right; background: rgba(0,0,0,0.3);">
+            <button id="saveConfigBtn" class="glitch-btn" style="background: var(--neon-cyan); color: #000; border: none; padding: 12px 30px; font-weight: bold; font-size: 1.1em; border-radius: 4px; cursor: pointer;">
+                SYSTEM NEUSTARTEN & SPEICHERN
+            </button>
+        </div>
     </div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
