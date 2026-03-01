@@ -33,18 +33,185 @@ const emojiMap = {
     misc: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","🔥","⚡","✨","🌟","💫","💥","💢","💦","💤","👀","🧠","💀","☠️"]
 };
 
-// --- MOBILE UI ---
-document.getElementById("mobileMenuBtn").onclick = () => {
-    document.getElementById("sidebar").classList.toggle("show");
-    document.getElementById("chatSection").classList.remove("chat-open"); 
-};
-document.getElementById("mobileChatBtn").onclick = () => {
-    document.getElementById("chatSection").classList.add("chat-open");
-    document.getElementById("sidebar").classList.remove("show");
-};
-document.getElementById("closeChatMobile").onclick = () => {
-    document.getElementById("chatSection").classList.remove("chat-open");
-};
+// ============================================================
+// --- REPARATUR-BLOCK: UI & CHAT (Slide-In & Single-Send) ---
+// ============================================================
+
+// 1. Sidebar & Chat UI Steuerung
+const sidebar = document.getElementById("sidebar");
+const chatSection = document.getElementById("chatSection");
+const desktopChatToggle = document.getElementById("desktopChatToggle");
+const notificationBadge = document.getElementById("chatNotificationBadge");
+
+// Desktop: Sidebar Slide-In
+if (desktopChatToggle) {
+    desktopChatToggle.onclick = () => {
+        chatSection.classList.toggle("chat-open");
+        // Badge ausblenden, wenn Chat geöffnet wird
+        if (chatSection.classList.contains("chat-open") && notificationBadge) {
+            notificationBadge.style.display = "none";
+        }
+    };
+}
+
+// Mobile: Menü öffnen
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+if (mobileMenuBtn) {
+    mobileMenuBtn.onclick = () => {
+        sidebar.classList.toggle("show");
+        chatSection.classList.remove("chat-open"); 
+    };
+}
+
+// Mobile: Chat öffnen
+const mobileChatBtn = document.getElementById("mobileChatBtn");
+if (mobileChatBtn) {
+    mobileChatBtn.onclick = () => {
+        chatSection.classList.add("chat-open");
+        sidebar.classList.remove("show");
+    };
+}
+
+// Mobile: Chat schließen
+const closeChatMobile = document.getElementById("closeChatMobile");
+if (closeChatMobile) {
+    closeChatMobile.onclick = () => {
+        chatSection.classList.remove("chat-open");
+    };
+}
+
+// 2. Chat Logik (Senden & Empfangen)
+const msgInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const fileInput = document.getElementById("fileInput");
+const fileBtn = document.getElementById("fileBtn");
+
+// Zentrale Sende-Funktion (verhindert doppelten Code)
+function performChatSend() {
+    if (!msgInput) return;
+    const text = msgInput.value.trim();
+    if (text) {
+        socket.emit("chat-message", { type: "text", text: text });
+        msgInput.value = "";
+        socket.emit("stop-typing");
+    }
+}
+
+// Event Listener nur setzen, wenn das Element existiert
+if (sendBtn) {
+    // Vorherigen Listener entfernen (Trick gegen Doppel-Senden)
+    const newSendBtn = sendBtn.cloneNode(true);
+    sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
+    newSendBtn.onclick = performChatSend;
+}
+
+if (msgInput) {
+    // Enter-Taste
+    msgInput.onkeypress = (e) => {
+        if (e.key === "Enter") performChatSend();
+    };
+    
+    // Typing Indicator
+    msgInput.oninput = () => {
+        socket.emit("typing");
+        if (typeof typingTimeout !== 'undefined') clearTimeout(typingTimeout);
+        // Globale Variable typingTimeout muss existieren, sonst hier 'let' nutzen
+        typingTimeout = setTimeout(() => socket.emit("stop-typing"), 2000);
+    };
+}
+
+// Datei-Versand
+if (fileBtn) {
+    fileBtn.onclick = () => {
+        if(fileInput) fileInput.click();
+    };
+}
+
+if (fileInput) {
+    // Alten Listener entfernen
+    const newFileInput = fileInput.cloneNode(true);
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    newFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Optional: Größenlimit 50MB
+        if (file.size > 50 * 1024 * 1024) {
+            if(typeof showToast === "function") showToast("DATEI ZU GROSS (MAX 50MB)", "error");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            socket.emit("chat-message", { 
+                type: "file", 
+                data: reader.result, 
+                fileName: file.name 
+            });
+            if(typeof showToast === "function") showToast("DATEI WIRD GESENDET...");
+        };
+        reader.readAsDataURL(file);
+        newFileInput.value = ""; // Reset
+    };
+}
+
+// 3. Nachrichten Empfangen
+// WICHTIG: Prüfen ob wir den Listener schon haben, sonst feuert er doppelt!
+if (!socket.hasListeners("chat-message")) {
+    socket.on("chat-message", (d) => {
+        const chatBox = document.getElementById("chatBox");
+        if (!chatBox) return;
+
+        const isMe = d.user === myName;
+        const div = document.createElement("div");
+        div.className = `chat-msg ${isMe ? 'mine' : 'theirs'}`;
+        
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        // Farben basierend auf User (Neon Pink für mich, Cyan für andere)
+        const userColor = isMe ? 'neon-text-pink' : 'neon-text-cyan';
+        
+        let content = "";
+        
+        if (d.type === "file") {
+            // Check ob Bild
+            if (d.data && d.data.startsWith("data:image/")) {
+                content = `
+                <div class="chat-image-wrapper">
+                    <img src="${d.data}" class="chat-inline-img clickable" onclick="openLightbox('${d.data}')" style="max-width: 200px; border-radius: 8px; cursor: pointer;">
+                    <br>
+                    <a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-download"></i> ${d.fileName}</a>
+                </div>`;
+            } else {
+                content = `<a href="${d.data}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-alt"></i> ${d.fileName}</a>`;
+            }
+        } else {
+            content = d.text; // Normaler Text
+        }
+
+        div.innerHTML = `
+            <strong class="${userColor}">${d.user}</strong> 
+            <span class="chat-time" style="font-size: 0.8em; opacity: 0.7;">${time}</span>
+            <div style="margin-top: 4px;">${content}</div>
+        `;
+
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Sound & Notification
+        if (!isMe) {
+            if (typeof chatSound !== 'undefined' && chatSound) { 
+                chatSound.currentTime = 0; 
+                chatSound.play().catch(()=>{}); 
+            }
+            // Badge Logik
+            if (!chatSection.classList.contains("chat-open")) {
+                if (notificationBadge) notificationBadge.style.display = "block";
+            }
+        }
+    });
+}
+// ============================================================
 
 // --- LOGIN SYSTEM ---
 document.getElementById("loginBtn").onclick = performLogin;
@@ -352,27 +519,68 @@ document.getElementById("cameraBtn").onclick = () => {
     } 
 };
 
-// --- CHAT & NOTIFICATION ---
-const chatSection = document.getElementById("chatSection");
-const chatToggleBtn = document.getElementById("desktopChatToggle");
-const notificationBadge = document.getElementById("chatNotificationBadge");
-const closeChatBtn = document.getElementById("closeChatMobile");
+// --- CHAT & FILE SEND LOGIC ---
 
-function toggleChat(forceOpen = null) {
-    const isOpen = chatSection.classList.contains("chat-open");
-    const shouldOpen = forceOpen !== null ? forceOpen : !isOpen;
+// 1. fileInput and fileBtn already defined above at line 101-102
 
-    if (shouldOpen) {
-        chatSection.classList.add("chat-open");
-        if(notificationBadge) notificationBadge.style.display = "none";
-    } else {
-        chatSection.classList.remove("chat-open");
-    }
+// 2. Nachrichten senden (Button Klick)
+if (sendBtn) {
+    sendBtn.onclick = () => {
+        const text = msgInput.value.trim();
+        if (text) {
+            socket.emit("chat-message", { type: "text", text: text });
+            msgInput.value = "";
+            socket.emit("stop-typing");
+        }
+    };
 }
-if(chatToggleBtn) chatToggleBtn.onclick = () => toggleChat();
 
-if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
+// 3. Nachrichten senden (Enter Taste)
+if (msgInput) {
+    msgInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            sendBtn.click();
+        }
+    });
+
+    // Typing Indicator
+    msgInput.addEventListener("input", () => {
+        socket.emit("typing");
+        if (typingTimeout) clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => socket.emit("stop-typing"), 2000);
+    });
+}
+
+// 4. Dateien/Bilder senden
+if (fileBtn) {
+    fileBtn.onclick = () => fileInput.click();
+}
+
+if (fileInput) {
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Dateigröße checken (optional, z.B. max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast("DATEI ZU GROSS (MAX 5MB)", "error");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            socket.emit("chat-message", { 
+                type: "file", 
+                data: reader.result, 
+                fileName: file.name 
+            });
+            showToast("DATEI WIRD GESENDET...");
+        };
+        reader.readAsDataURL(file);
+        
+        // Input resetten, damit man die gleiche Datei nochmal wählen könnte
+        fileInput.value = ""; 
+    };
 }
 
 // --- CONTROLS ---
@@ -709,71 +917,6 @@ document.getElementById("afkBtn").onclick = () => {
     }
 };
 socket.on("user-afk", ({ id, isAfk }) => toggleAfkVisuals(id, isAfk));
-
-const msgInput = document.getElementById("messageInput");
-document.getElementById("sendBtn").onclick = () => {
-    if (msgInput.value.trim()) { socket.emit("chat-message", { text: msgInput.value }); msgInput.value = ""; socket.emit("stop-typing"); }
-};
-msgInput.addEventListener("keypress", (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); });
-msgInput.addEventListener("input", () => {
-    socket.emit("typing"); if (typingTimeout) clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => socket.emit("stop-typing"), 2000);
-});
-socket.on("user-typing", (name) => { const ti = document.getElementById("typingIndicator"); ti.innerText = `${name} schreibt...`; ti.classList.add("active"); });
-socket.on("user-stop-typing", () => document.getElementById("typingIndicator").classList.remove("active"));
-document.getElementById("fileBtn").onclick = () => document.getElementById("fileInput").click();
-document.getElementById("fileInput").onchange = (e) => {
-    const f = e.target.files[0];
-    if (f) { const r = new FileReader(); r.onload = () => socket.emit("chat-message", { type: "file", data: r.result, fileName: f.name }); r.readAsDataURL(f); }
-};
-
-socket.on("chat-message", d => {
-    const b = document.getElementById("chatBox");
-    const isMe = d.user === myName;
-    const div = document.createElement("div");
-    div.className = `chat-msg ${isMe ? 'mine' : 'theirs'}`;
-    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const userColor = isMe ? 'neon-text-pink' : 'neon-text-cyan';
-    
-    if (d.type === "file") {
-        fetch(d.data).then(res => res.blob()).then(blob => {
-            const blobUrl = URL.createObjectURL(blob);
-            let content = "";
-            if (d.data.startsWith("data:image/")) {
-                content = `
-                <div class="chat-image-wrapper">
-                    <img src="${blobUrl}" class="chat-inline-img clickable" alt="${d.fileName}" onclick="openLightbox('${blobUrl}')" title="Großansicht">
-                    <a href="${blobUrl}" download="${d.fileName}" class="file-msg" style="font-size:0.8em; padding:3px; display:inline-block; margin-top: 5px;">
-                        <i class="fas fa-file-download"></i> ${d.fileName} speichern
-                    </a>
-                </div>`;
-            } else {
-                content = `<a href="${blobUrl}" download="${d.fileName}" class="file-msg"><i class="fas fa-file-download"></i> ${d.fileName} speichern</a>`;
-            }
-            div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
-            b.appendChild(div); b.scrollTop = b.scrollHeight;
-            if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
-        });
-    } else {
-        let content = d.text;
-        div.innerHTML = `<strong class="${userColor}">${d.user}</strong> <span class="chat-time">${time}</span><div style="margin-top:4px;">${content}</div>`;
-        b.appendChild(div); b.scrollTop = b.scrollHeight;
-        if (!isMe) { chatSound.currentTime = 0; chatSound.play().catch(()=>{}); }
-    }
-
-    const chatSection = document.getElementById("chatSection");
-    const isChatClosed = !chatSection.classList.contains("chat-open");
-    const isWindowHidden = document.hidden;
-    if (!isMe && (isChatClosed || isWindowHidden)) {
-        const badge = document.getElementById("chatNotificationBadge");
-        if(badge) badge.style.display = "block";
-        let previewText = d.type === "file" ? `📂 Datei: ${d.fileName}` : d.text;
-        if ("Notification" in window && Notification.permission === "granted") {
-            const notif = new Notification(`> ${d.user}`, { body: previewText, icon: 'favicon.png', tag: 'chat-msg' });
-            notif.onclick = () => { window.focus(); if(window.electronAPI) window.electronAPI.onHotkey(() => {}); toggleChat(true); };
-        }
-    }
-});
 
 // --- WEBRTC CORE (SAFE MODE) ---
 
