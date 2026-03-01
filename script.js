@@ -775,11 +775,62 @@ socket.on("chat-message", d => {
     }
 });
 
-// --- WEBRTC CORE ---
-socket.on("user-ready", ({ id, name }) => { const pc=new RTCPeerConnection(config); peers[id]=pc; localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); pc.onicecandidate=e=>e.candidate&&socket.emit("ice",{candidate:e.candidate,to:id}); addVideoNode(id,name,null,false); pc.ontrack=e=>{const v=document.querySelector(`#v-${id} video`);if(v)v.srcObject=e.streams[0];}; pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>socket.emit("offer",{offer:pc.localDescription,to:id,name:myName})); });
-socket.on("offer", async d => { const pc=new RTCPeerConnection(config); peers[d.from]=pc; localStream.getTracks().forEach(t=>pc.addTrack(t,localStream)); pc.onicecandidate=e=>e.candidate&&socket.emit("ice",{candidate:e.candidate,to:d.from}); addVideoNode(d.from,d.name,null,false); pc.ontrack=e=>{const v=document.querySelector(`#v-${d.from} video`);if(v)v.srcObject=e.streams[0];}; await pc.setRemoteDescription(d.offer); const a=await pc.createAnswer(); await pc.setLocalDescription(a); socket.emit("answer",{answer:a,to:d.from}); });
-socket.on("answer", d => peers[d.from]&&peers[d.from].setRemoteDescription(d.answer));
-socket.on("ice", d => peers[d.from]&&peers[d.from].addIceCandidate(d.candidate));
+// --- WEBRTC CORE (SAFE MODE) ---
+
+socket.on("user-ready", ({ id, name }) => {
+    const pc = new RTCPeerConnection(config);
+    peers[id] = pc;
+
+    // SICHERHEITS-CHECK: Nur Senden, wenn Kamera an ist
+    if (localStream) {
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
+
+    pc.onicecandidate = e => e.candidate && socket.emit("ice", { candidate: e.candidate, to: id });
+    
+    pc.ontrack = e => {
+        const v = document.querySelector(`#v-${id} video`);
+        if (v) v.srcObject = e.streams[0];
+    };
+
+    addVideoNode(id, name, null, false);
+
+    pc.createOffer()
+        .then(o => pc.setLocalDescription(o))
+        .then(() => socket.emit("offer", { offer: pc.localDescription, to: id, name: myName }));
+});
+
+socket.on("offer", async d => {
+    const pc = new RTCPeerConnection(config);
+    peers[d.from] = pc;
+
+    // SICHERHEITS-CHECK: Nur Senden, wenn Kamera an ist
+    if (localStream) {
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
+
+    pc.onicecandidate = e => e.candidate && socket.emit("ice", { candidate: e.candidate, to: d.from });
+    
+    pc.ontrack = e => {
+        const v = document.querySelector(`#v-${d.from} video`);
+        if (v) v.srcObject = e.streams[0];
+    };
+
+    addVideoNode(d.from, d.name, null, false);
+
+    await pc.setRemoteDescription(d.offer);
+    const a = await pc.createAnswer();
+    await pc.setLocalDescription(a);
+    socket.emit("answer", { answer: a, to: d.from });
+});
+
+socket.on("answer", d => {
+    if (peers[d.from]) peers[d.from].setRemoteDescription(d.answer);
+});
+
+socket.on("ice", d => {
+    if (peers[d.from]) peers[d.from].addIceCandidate(d.candidate);
+});
 
 socket.on("user-left", (id) => {
     const videoEl = document.getElementById(`v-${id}`);
