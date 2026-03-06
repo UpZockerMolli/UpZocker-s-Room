@@ -1114,49 +1114,40 @@ recBtn.onclick = handleRecordingToggle;
 
 // 2. Die zentrale Steuerungs-Funktion (auch für Hotkeys & Voice)
 async function handleRecordingToggle() {
-    // A) Wenn wir schon aufnehmen -> STOPPEN
-    if (recBtn.classList.contains("recording")) {
+    const recBtn = document.getElementById("recordBtn");
+    if (recBtn && recBtn.classList.contains("recording")) {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
-            mediaRecorder.stop(); // Das triggert onstop -> saveFile()
+            mediaRecorder.stop(); 
         }
         return;
     }
 
-    // B) Wenn wir NICHT aufnehmen -> STARTEN
-    // Haben wir schon einen Stream? (z.B. vom Screen Share oder vorheriger Aufnahme)
+    // STRENGE PRÜFUNG: Lebt der Stream noch oder hat das Spiel ihn gekillt?
+    let streamIsAlive = false;
     if (globalScreenStream && globalScreenStream.active) {
+        const track = globalScreenStream.getVideoTracks()[0];
+        if (track && track.readyState === "live") {
+            streamIsAlive = true;
+        }
+    }
+
+    if (streamIsAlive) {
         startRecordingProcess();
     } else {
-        // Nein? Dann erst Stream holen, DANN sofort starten
         try {
             globalScreenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: { 
-                    mediaSource: "screen", 
-                    width: { ideal: 1920 }, 
-                    height: { ideal: 1080 }, 
-                    frameRate: { ideal: 60 } 
-                },
-                audio: { 
-                    echoCancellation: false, 
-                    noiseSuppression: false, 
-                    autoGainControl: false 
-                }
+                video: { mediaSource: "screen", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
             });
-
-            // Wenn der User im Browser-Popup "Abbrechen" drückt
             globalScreenStream.getVideoTracks()[0].onended = () => { 
                 resetRecordingUI(); 
                 globalScreenStream = null; 
             };
-
-            // Wenn Stream da ist -> SOFORT LOSLEGEN
             startRecordingProcess();
-
         } catch (err) {
             console.error("Recording Start Failed:", err);
-            // Nur Toast zeigen, wenn es kein "Abbruch durch User" war
             if (err.name !== 'NotAllowedError') {
-                showToast("RECORDING FAILED: " + err.message, "error");
+                if(typeof showToast === "function") showToast("RECORDING FAILED: " + err.message, "error");
             }
         }
     }
@@ -1164,92 +1155,85 @@ async function handleRecordingToggle() {
 
 // 3. Der eigentliche Aufnahmeprozess
 function startRecordingProcess() {
-    if (!globalScreenStream) return; // Sicherheitshalber
-
+    if (!globalScreenStream) return; 
+    const recBtn = document.getElementById("recordBtn");
     recordedChunks = [];
 
-    // Audio Setup (System + Mikrofon mischen)
     if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
 
     const dest = globalAudioCtx.createMediaStreamDestination();
     let hasAudio = false;
 
-    // A) System Audio (vom Screen Stream)
+    // System-Audio
     const screenAudioTracks = globalScreenStream.getAudioTracks();
     if (screenAudioTracks.length > 0) {
         const sysSource = globalAudioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
         const sysGain = globalAudioCtx.createGain(); 
-        sysGain.gain.value = 0.6; // Etwas leiser damit Stimme klarer ist
+        sysGain.gain.value = 0.6; 
         sysSource.connect(sysGain);
         sysGain.connect(dest);
         hasAudio = true;
     }
 
-    // B) Mikrofon Audio (vom lokalen Stream)
+    // Mikrofon
     if (localStream && localStream.getAudioTracks().length > 0) {
         const currentMicTrack = localStream.getAudioTracks()[0];
         if (currentMicTrack.readyState === 'live') {
             activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
             recMicGain = globalAudioCtx.createGain(); 
-            recMicGain.gain.value = 2.0; // Mikrofon boosten
+            recMicGain.gain.value = 2.0; 
             activeMicSource.connect(recMicGain);
             recMicGain.connect(dest);
             hasAudio = true;
         }
     }
 
-    // Streams kombinieren (Video + gemischtes Audio)
     const tracks = [];
-    if (globalScreenStream.getVideoTracks().length > 0) {
-        tracks.push(globalScreenStream.getVideoTracks()[0]);
-    }
-    if (hasAudio) {
-        tracks.push(dest.stream.getAudioTracks()[0]);
-    }
+    if (globalScreenStream.getVideoTracks().length > 0) tracks.push(globalScreenStream.getVideoTracks()[0]);
+    if (hasAudio) tracks.push(dest.stream.getAudioTracks()[0]);
 
     const combinedStream = new MediaStream(tracks);
     
-    // Beste Qualität erzwingen
-    const options = { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 5000000 };
-    // Fallback falls VP9 nicht geht
+    // VP8 statt VP9 (weniger GPU lastig)
+    let options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 4000000 };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm'; 
-        delete options.videoBitsPerSecond;
+        options = { mimeType: 'video/webm' }; 
     }
 
     try { 
         mediaRecorder = new MediaRecorder(combinedStream, options); 
-        
-        mediaRecorder.ondataavailable = (e) => { 
-            if (e.data.size > 0) recordedChunks.push(e.data); 
-        };
-        
-        mediaRecorder.onstop = () => { 
-            saveFile(); 
-            // Cleanup Audio Nodes
-            if (activeMicSource) activeMicSource.disconnect();
-            if (recMicGain) recMicGain.disconnect();
-            activeMicSource = null; 
-            recMicGain = null; 
-        };
-        
-        mediaRecorder.start(1000); // Alle 1s Daten schreiben (sicherer bei Crash)
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = saveFile; // Die saveFile Funktion bleibt unangetastet
+        mediaRecorder.start(1000); 
 
-        // UI Update: Button wird ROT
-        recBtn.classList.add("recording");
-        recBtn.style.color = "#ff0000";
-        recBtn.style.borderColor = "#ff0000";
-        recBtn.style.boxShadow = "0 0 15px #ff0000";
-
-        // Sound abspielen
-        new Audio("https://assets.mixkit.co/active_storage/sfx/972/972-preview.mp3").play().catch(()=>{});
-        showToast("MISSION LOG: RECORDING STARTED");
+        if (recBtn) {
+            recBtn.classList.add("recording");
+            recBtn.style.color = "#ff0000";
+            recBtn.style.borderColor = "#ff0000";
+            recBtn.style.boxShadow = "0 0 15px #ff0000";
+        }
+        if(typeof showToast === "function") showToast("RECORDING STARTED");
 
     } catch (err) { 
-        console.error("MediaRecorder Error:", err);
-        showToast("ERROR: RECORDER FAILED", "error");
-        resetRecordingUI();
+        console.warn("GPU Encoder blockiert, versuche Fallback:", err);
+        // RETTUNGSANKER: Wenn GPU blockiert ist, erzwingen wir Standard-WebM ohne Vorgaben
+        try {
+            mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = saveFile;
+            mediaRecorder.start(1000);
+            
+            if (recBtn) {
+                recBtn.classList.add("recording");
+                recBtn.style.color = "#ff0000";
+                recBtn.style.borderColor = "#ff0000";
+            }
+            if(typeof showToast === "function") showToast("RECORDING STARTED (FALLBACK)");
+        } catch (fallbackErr) {
+            if(typeof showToast === "function") showToast("RECORDING FAILED: " + fallbackErr.message, "error");
+            if(typeof resetRecordingUI === "function") resetRecordingUI();
+        }
     }
 }
 
