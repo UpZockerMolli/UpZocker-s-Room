@@ -1092,6 +1092,9 @@ if (saveBtn) {
     };
 }
 
+// =========================================================================
+// --- ELECTRON IPC EMPFÄNGER (Mit Background-Indikator) ---
+// =========================================================================
 if (window.electronAPI) {
     const configBtn = document.getElementById("configBtn"); if (configBtn) configBtn.style.display = "inline-block";
     const inviteBtn = document.getElementById("inviteBtn"); if (inviteBtn) inviteBtn.style.display = "none";
@@ -1099,9 +1102,9 @@ if (window.electronAPI) {
     document.querySelectorAll(".briefing-box").forEach(b => b.style.display = "none");
     
     window.electronAPI.onHotkey((action) => { 
-        // 1. Aufnahme direkt triggern
+        // 1. Aufnahme direkt triggern (Mit Parameter 'true' für Hintergrund-Erkennung)
         if (action === "rec" && typeof handleRecordingToggle === "function") {
-            handleRecordingToggle(); 
+            handleRecordingToggle(true); 
         } 
         // 2. Mikrofon direkt hardwareseitig triggern
         else if (action === "mute" && localStream) {
@@ -1121,7 +1124,7 @@ if (window.electronAPI) {
                 if(typeof showToast === "function") showToast(t.enabled ? "KAMERA AKTIV" : "KAMERA DEAKTIVIERT");
             } 
         }
-        // 4. Standard-Klick für den Rest (AFK, Snap, etc.)
+        // 4. Standard-Klick für den Rest
         else {
             const targetBtn = document.getElementById(hotkeys[action].btn); 
             if (targetBtn) targetBtn.click(); 
@@ -1137,8 +1140,7 @@ document.addEventListener("keydown", (e) => {
         if (hotkeys[key].current && pressedKey === hotkeys[key].current.toLowerCase()) {
             e.preventDefault();
             if (key === "rec") { 
-                // NEU: Einfach die Toggle Funktion aufrufen
-                handleRecordingToggle();
+                handleRecordingToggle(false); // Lokaler Klick (Nicht aus dem Hintergrund)
             } else {
                 const targetBtn = document.getElementById(hotkeys[key].btn);
                 if (targetBtn) targetBtn.click();
@@ -1162,11 +1164,9 @@ window.addEventListener('message', (event) => {
 
 // --- ONE-CLICK RECORDING SYSTEM (REPAIRED & ROBUST) ---
 
-// 1. Der Auslöser (Button Klick)
-if (recBtn) recBtn.onclick = handleRecordingToggle;
+if (recBtn) recBtn.onclick = () => handleRecordingToggle(false);
 
-// 2. Die zentrale Steuerungs-Funktion
-async function handleRecordingToggle() {
+async function handleRecordingToggle(isFromHotkey = false) {
     // A) Aufnahme STOPPEN
     if (recBtn && recBtn.classList.contains("recording")) {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
@@ -1187,24 +1187,26 @@ async function handleRecordingToggle() {
     if (streamIsAlive) {
         startRecordingProcess();
     } else {
-        // WICHTIG: Tote "Zombie"-Streams gnadenlos killen, bevor wir neu anfragen!
+        // RADAR: Wenn Chromium den Stream blockiert, weil du im Hintergrund bist
+        if (isFromHotkey === true) {
+            if(typeof showToast === "function") showToast("🚨 SYSTEM: Bitte Aufnahme erst 1x manuell anklicken (Scharfschalten)!", "error");
+            return;
+        }
+
         if (globalScreenStream) {
             globalScreenStream.getTracks().forEach(t => t.stop());
             globalScreenStream = null;
         }
 
         try {
-            // VERSUCH 1: Mit System-Audio (Kann bei manchen Spielen/Treibern crashen)
             try {
                 globalScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             } catch (audioErr) {
                 console.warn("System-Audio blockiert, versuche Fallback (Nur Video)...", audioErr);
-                // VERSUCH 2: Fallback! Wenn "could not start video source" kam, liegt es zu 90% am Audio.
                 globalScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 if(typeof showToast === "function") showToast("INFO: System-Audio blockiert, nutze nur Mikrofon.", "error");
             }
             
-            // Wenn der User später manuell auf "Freigabe beenden" klickt
             globalScreenStream.getVideoTracks()[0].onended = () => { 
                 resetRecordingUI();
                 globalScreenStream = null; 
@@ -1214,26 +1216,31 @@ async function handleRecordingToggle() {
             
         } catch (err) {
             console.error("Recording Start Failed:", err);
-            // Fehler anzeigen, außer der User hat einfach im Pop-up auf "Abbrechen" geklickt
-            if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+            // Wir blenden Fehler nicht mehr aus, sondern zeigen sie dir klar an!
+            if (err.name === 'NotAllowedError') {
+                if(typeof showToast === "function") showToast("ZUGRIFF VERWEIGERT: Berechtigung fehlt.", "error");
+            } else if (err.name !== 'AbortError') {
                 if(typeof showToast === "function") showToast("RECORDING FAILED: " + err.message, "error");
             }
         }
     }
 }
 
-// 3. Der eigentliche Aufnahmeprozess
 function startRecordingProcess() {
     if (!globalScreenStream) return; 
     recordedChunks = [];
 
     if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
+    
+    // WICHTIG: AudioContext darf bei Hotkeys nicht blockieren
+    try {
+        if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
+    } catch(e) { console.warn("Audio Context Error", e); }
 
     const dest = globalAudioCtx.createMediaStreamDestination();
     let hasAudio = false;
 
-    // A) System-Audio (falls der Browser es uns geben durfte)
+    // A) System-Audio
     const screenAudioTracks = globalScreenStream.getAudioTracks();
     if (screenAudioTracks.length > 0) {
         try {
@@ -1246,12 +1253,11 @@ function startRecordingProcess() {
         } catch (e) { console.warn("System Audio Routing Error:", e); }
     }
 
-    // B) Mikrofon (Lokaler Stream)
+    // B) Mikrofon
     if (localStream && localStream.getAudioTracks().length > 0) {
         const currentMicTrack = localStream.getAudioTracks()[0];
         if (currentMicTrack.readyState === 'live') {
             try {
-                // Audio-Nodes sauber trennen, falls wir eine 2. Aufnahme starten
                 if (activeMicSource) activeMicSource.disconnect();
                 if (recMicGain) recMicGain.disconnect();
                 
@@ -1271,7 +1277,6 @@ function startRecordingProcess() {
 
     const combinedStream = new MediaStream(tracks);
     
-    // Robuster Codec Fallback
     let options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 4000000 };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options = { mimeType: 'video/webm' }; 
@@ -1281,11 +1286,11 @@ function startRecordingProcess() {
         mediaRecorder = new MediaRecorder(combinedStream, options); 
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
         
-        // WICHTIG: Nodes beim Stoppen sauber trennen, damit die nächste Aufnahme nicht crasht
         mediaRecorder.onstop = () => {
             saveFile();
             if (activeMicSource) { activeMicSource.disconnect(); activeMicSource = null; }
             if (recMicGain) { recMicGain.disconnect(); recMicGain = null; }
+            // Der globale Stream wird HIER NICHT beendet! Dadurch bleibt das Scharfschalten aktiv!
         };
         
         mediaRecorder.start(1000); 
