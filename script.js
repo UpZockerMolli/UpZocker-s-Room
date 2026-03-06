@@ -1000,11 +1000,43 @@ const hotkeys = {
     expand: { id: "hotkeyExpand", btn: "expandBtn",  default: "",   current: "" }
 };
 
+// --- HOTKEY INITIALISIERUNG (REPARIERT & VERZÖGERT) ---
+
 function toggleElectronHotkeys(enable) {
     if (!window.electronAPI) return;
-    if (enable) { const electronKeys = {}; Object.keys(hotkeys).forEach(key => electronKeys[key] = hotkeys[key].current); window.electronAPI.updateHotkeys(electronKeys); } 
-    else { window.electronAPI.updateHotkeys({}); }
+    if (enable) { 
+        const electronKeys = {}; 
+        Object.keys(hotkeys).forEach(key => {
+            let val = hotkeys[key].current;
+            // SICHERHEIT: Electron braucht strikte Formate (z.B. "F9" statt "f9", "A" statt "a")
+            if (val) {
+                if (val.length === 1) val = val.toUpperCase();
+                else if (val.toLowerCase().startsWith("f") && val.length <= 3) val = val.toUpperCase();
+            }
+            electronKeys[key] = val;
+        }); 
+        window.electronAPI.updateHotkeys(electronKeys); 
+    } 
+    else { 
+        window.electronAPI.updateHotkeys({}); 
+    }
 }
+
+Object.keys(hotkeys).forEach(key => {
+    let stored = localStorage.getItem(`hotkey_${key}`);
+    if (stored === "null" || stored === null) stored = ""; 
+    hotkeys[key].current = stored !== "" ? stored : hotkeys[key].default;
+    const inputEl = document.getElementById(hotkeys[key].id);
+    if (inputEl) inputEl.value = hotkeys[key].current;
+});
+
+// WICHTIG: Wir geben dem Programm 2 Sekunden Zeit hochzufahren, DANN erst übergeben wir die Hotkeys!
+setTimeout(() => {
+    if (window.electronAPI) {
+        toggleElectronHotkeys(true);
+        if(typeof showToast === "function") showToast("SYSTEM: Hotkeys im Hintergrund aktiv.");
+    }
+}, 2000);
 
 document.getElementById("configBtn").onclick = async () => {
     const isOpening = configPanel.style.display === "none";
