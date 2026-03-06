@@ -1107,16 +1107,14 @@ window.addEventListener('message', (event) => {
     }
 });
 
-// --- ONE-CLICK RECORDING SYSTEM ---
+// --- ONE-CLICK RECORDING SYSTEM (REPAIRED & ROBUST) ---
 
 // 1. Der Auslöser (Button Klick)
-recBtn.onclick = handleRecordingToggle;
+if (recBtn) recBtn.onclick = handleRecordingToggle;
 
-// 2. Die zentrale Steuerungs-Funktion (auch für Hotkeys & Voice)
+// 2. Die zentrale Steuerungs-Funktion
 async function handleRecordingToggle() {
-    const recBtn = document.getElementById("recordBtn");
-    
-    // 1. Wenn Aufnahme läuft -> Stoppen
+    // A) Aufnahme STOPPEN
     if (recBtn && recBtn.classList.contains("recording")) {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop(); 
@@ -1124,7 +1122,7 @@ async function handleRecordingToggle() {
         return;
     }
 
-    // 2. Prüfen, ob wir noch einen aktiven Stream im Hintergrund haben
+    // B) Prüfen ob der Stream noch lebt
     let streamIsAlive = false;
     if (globalScreenStream && globalScreenStream.active) {
         const track = globalScreenStream.getVideoTracks()[0];
@@ -1133,20 +1131,29 @@ async function handleRecordingToggle() {
         }
     }
 
-    // 3. Starten
     if (streamIsAlive) {
         startRecordingProcess();
     } else {
+        // WICHTIG: Tote "Zombie"-Streams gnadenlos killen, bevor wir neu anfragen!
+        if (globalScreenStream) {
+            globalScreenStream.getTracks().forEach(t => t.stop());
+            globalScreenStream = null;
+        }
+
         try {
-            // HIER WAR DER FEHLER: Wir nutzen wieder die simple, verlässliche Methode!
-            globalScreenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true, 
-                audio: true 
-            });
+            // VERSUCH 1: Mit System-Audio (Kann bei manchen Spielen/Treibern crashen)
+            try {
+                globalScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            } catch (audioErr) {
+                console.warn("System-Audio blockiert, versuche Fallback (Nur Video)...", audioErr);
+                // VERSUCH 2: Fallback! Wenn "could not start video source" kam, liegt es zu 90% am Audio.
+                globalScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                if(typeof showToast === "function") showToast("INFO: System-Audio blockiert, nutze nur Mikrofon.", "error");
+            }
             
-            // Wenn der Stream (z.B. vom User über "Teilen beenden") gestoppt wird
+            // Wenn der User später manuell auf "Freigabe beenden" klickt
             globalScreenStream.getVideoTracks()[0].onended = () => { 
-                if(typeof resetRecordingUI === "function") resetRecordingUI();
+                resetRecordingUI();
                 globalScreenStream = null; 
             };
             
@@ -1165,7 +1172,6 @@ async function handleRecordingToggle() {
 // 3. Der eigentliche Aufnahmeprozess
 function startRecordingProcess() {
     if (!globalScreenStream) return; 
-    const recBtn = document.getElementById("recordBtn");
     recordedChunks = [];
 
     if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1174,27 +1180,35 @@ function startRecordingProcess() {
     const dest = globalAudioCtx.createMediaStreamDestination();
     let hasAudio = false;
 
-    // System-Audio
+    // A) System-Audio (falls der Browser es uns geben durfte)
     const screenAudioTracks = globalScreenStream.getAudioTracks();
     if (screenAudioTracks.length > 0) {
-        const sysSource = globalAudioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
-        const sysGain = globalAudioCtx.createGain(); 
-        sysGain.gain.value = 0.6; 
-        sysSource.connect(sysGain);
-        sysGain.connect(dest);
-        hasAudio = true;
+        try {
+            const sysSource = globalAudioCtx.createMediaStreamSource(new MediaStream([screenAudioTracks[0]]));
+            const sysGain = globalAudioCtx.createGain(); 
+            sysGain.gain.value = 0.6; 
+            sysSource.connect(sysGain);
+            sysGain.connect(dest);
+            hasAudio = true;
+        } catch (e) { console.warn("System Audio Routing Error:", e); }
     }
 
-    // Mikrofon
+    // B) Mikrofon (Lokaler Stream)
     if (localStream && localStream.getAudioTracks().length > 0) {
         const currentMicTrack = localStream.getAudioTracks()[0];
         if (currentMicTrack.readyState === 'live') {
-            activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
-            recMicGain = globalAudioCtx.createGain(); 
-            recMicGain.gain.value = 2.0; 
-            activeMicSource.connect(recMicGain);
-            recMicGain.connect(dest);
-            hasAudio = true;
+            try {
+                // Audio-Nodes sauber trennen, falls wir eine 2. Aufnahme starten
+                if (activeMicSource) activeMicSource.disconnect();
+                if (recMicGain) recMicGain.disconnect();
+                
+                activeMicSource = globalAudioCtx.createMediaStreamSource(new MediaStream([currentMicTrack]));
+                recMicGain = globalAudioCtx.createGain(); 
+                recMicGain.gain.value = 2.0; 
+                activeMicSource.connect(recMicGain);
+                recMicGain.connect(dest);
+                hasAudio = true;
+            } catch (e) { console.warn("Mic Routing Error:", e); }
         }
     }
 
@@ -1204,7 +1218,7 @@ function startRecordingProcess() {
 
     const combinedStream = new MediaStream(tracks);
     
-    // VP8 statt VP9 (weniger GPU lastig)
+    // Robuster Codec Fallback
     let options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 4000000 };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options = { mimeType: 'video/webm' }; 
@@ -1213,7 +1227,14 @@ function startRecordingProcess() {
     try { 
         mediaRecorder = new MediaRecorder(combinedStream, options); 
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-        mediaRecorder.onstop = saveFile; // Die saveFile Funktion bleibt unangetastet
+        
+        // WICHTIG: Nodes beim Stoppen sauber trennen, damit die nächste Aufnahme nicht crasht
+        mediaRecorder.onstop = () => {
+            saveFile();
+            if (activeMicSource) { activeMicSource.disconnect(); activeMicSource = null; }
+            if (recMicGain) { recMicGain.disconnect(); recMicGain = null; }
+        };
+        
         mediaRecorder.start(1000); 
 
         if (recBtn) {
@@ -1225,12 +1246,15 @@ function startRecordingProcess() {
         if(typeof showToast === "function") showToast("RECORDING STARTED");
 
     } catch (err) { 
-        console.warn("GPU Encoder blockiert, versuche Fallback:", err);
-        // RETTUNGSANKER: Wenn GPU blockiert ist, erzwingen wir Standard-WebM ohne Vorgaben
+        console.warn("Encoder blockiert, absoluter Fallback:", err);
         try {
             mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
             mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            mediaRecorder.onstop = saveFile;
+            mediaRecorder.onstop = () => {
+                saveFile();
+                if (activeMicSource) { activeMicSource.disconnect(); activeMicSource = null; }
+                if (recMicGain) { recMicGain.disconnect(); recMicGain = null; }
+            };
             mediaRecorder.start(1000);
             
             if (recBtn) {
@@ -1241,14 +1265,18 @@ function startRecordingProcess() {
             if(typeof showToast === "function") showToast("RECORDING STARTED (FALLBACK)");
         } catch (fallbackErr) {
             if(typeof showToast === "function") showToast("RECORDING FAILED: " + fallbackErr.message, "error");
-            if(typeof resetRecordingUI === "function") resetRecordingUI();
+            resetRecordingUI();
         }
     }
 }
 
 function saveFile() {
     resetRecordingUI();
-    recBtn.style.color = "#ffe600"; recBtn.style.borderColor = "#ffe600"; recBtn.style.boxShadow = "0 0 10px #ffe600";
+    if (recBtn) {
+        recBtn.style.color = "#ffe600"; 
+        recBtn.style.borderColor = "#ffe600"; 
+        recBtn.style.boxShadow = "0 0 10px #ffe600";
+    }
     new Audio("https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3").play().catch(()=>{});
     const blob = new Blob(recordedChunks, { type: "video/webm" });
     const url = URL.createObjectURL(blob);
@@ -1258,11 +1286,11 @@ function saveFile() {
     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
 }
 
-function resetRecordingUI() { recBtn.classList.remove("recording"); recBtn.style = ""; }
-
-if ('mediaSession' in navigator) {
-    const triggerRec = () => { if (globalScreenStream && globalScreenStream.active) toggleRecordingState(); };
-    try { navigator.mediaSession.setActionHandler('play', triggerRec); navigator.mediaSession.setActionHandler('pause', triggerRec); navigator.mediaSession.setActionHandler('stop', triggerRec); } catch(e){}
+function resetRecordingUI() { 
+    if (recBtn) {
+        recBtn.classList.remove("recording"); 
+        recBtn.style = ""; 
+    }
 }
 
 function initVoiceCommands() {
