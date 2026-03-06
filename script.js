@@ -1018,6 +1018,7 @@ document.getElementById("configBtn").onclick = async () => {
 document.getElementById("closeConfigBtn").onclick = () => { configPanel.style.display = "none"; toggleElectronHotkeys(true); }
 
 Object.keys(hotkeys).forEach(key => {
+    toggleElectronHotkeys(true);
     let stored = localStorage.getItem(`hotkey_${key}`);
     if (stored === "null" || stored === null) stored = ""; 
     hotkeys[key].current = stored !== "" ? stored : hotkeys[key].default;
