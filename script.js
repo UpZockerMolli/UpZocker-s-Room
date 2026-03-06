@@ -1065,16 +1065,36 @@ if (window.electronAPI) {
     const inviteBtn = document.getElementById("inviteBtn"); if (inviteBtn) inviteBtn.style.display = "none";
     document.querySelectorAll(".download-section").forEach(s => s.style.display = "none");
     document.querySelectorAll(".briefing-box").forEach(b => b.style.display = "none");
+    
     window.electronAPI.onHotkey((action) => { 
-    if (action === "rec" && typeof handleRecordingToggle === "function") {
-        // Direkter, sicherer Aufruf der Aufnahme-Funktion
-        handleRecordingToggle(); 
-    } else {
-        // Standard-Klick für alle anderen Hotkeys
-        const targetBtn = document.getElementById(hotkeys[action].btn); 
-        if (targetBtn) targetBtn.click(); 
-    }
-});
+        // 1. Aufnahme direkt triggern
+        if (action === "rec" && typeof handleRecordingToggle === "function") {
+            handleRecordingToggle(); 
+        } 
+        // 2. Mikrofon direkt hardwareseitig triggern
+        else if (action === "mute" && localStream) {
+            const t = localStream.getAudioTracks()[0]; 
+            if(t) { 
+                t.enabled = !t.enabled; 
+                document.getElementById("muteBtn").classList.toggle("off", !t.enabled); 
+                if(typeof showToast === "function") showToast(t.enabled ? "MIKROFON AKTIV" : "MIKROFON STUMM");
+            } 
+        }
+        // 3. Kamera direkt hardwareseitig triggern
+        else if (action === "cam" && localStream) {
+            const t = localStream.getVideoTracks()[0]; 
+            if(t) { 
+                t.enabled = !t.enabled; 
+                document.getElementById("cameraBtn").classList.toggle("off", !t.enabled); 
+                if(typeof showToast === "function") showToast(t.enabled ? "KAMERA AKTIV" : "KAMERA DEAKTIVIERT");
+            } 
+        }
+        // 4. Standard-Klick für den Rest (AFK, Snap, etc.)
+        else {
+            const targetBtn = document.getElementById(hotkeys[action].btn); 
+            if (targetBtn) targetBtn.click(); 
+        }
+    });
 }
 
 document.addEventListener("keydown", (e) => {
