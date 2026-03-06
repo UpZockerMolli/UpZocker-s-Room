@@ -1122,7 +1122,19 @@ async function handleRecordingToggle() {
         return;
     }
 
-    // STRENGE PRÜFUNG: Lebt der Stream noch oder hat das Spiel ihn gekillt?
+    // --- NEU: Keep-Alive Element (Verhindert das Einschlafen des Streams) ---
+    let keepAlive = document.getElementById("keepAliveRecVideo");
+    if (!keepAlive) {
+        keepAlive = document.createElement("video");
+        keepAlive.id = "keepAliveRecVideo";
+        // 1x1 Pixel, fast unsichtbar, ignoriert Klicks, aber "aktiv" für die Engine
+        keepAlive.style.cssText = "position:absolute; top:0; left:0; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-1;";
+        keepAlive.muted = true;
+        keepAlive.autoplay = true;
+        document.body.appendChild(keepAlive);
+    }
+
+    // --- Lebt der Stream noch? ---
     let streamIsAlive = false;
     if (globalScreenStream && globalScreenStream.active) {
         const track = globalScreenStream.getVideoTracks()[0];
@@ -1139,10 +1151,16 @@ async function handleRecordingToggle() {
                 video: { mediaSource: "screen", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
                 audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
             });
+            
+            // WICHTIG: Stream an das Video klemmen, damit er nicht stirbt!
+            keepAlive.srcObject = globalScreenStream;
+
             globalScreenStream.getVideoTracks()[0].onended = () => { 
-                resetRecordingUI(); 
+                if(typeof resetRecordingUI === "function") resetRecordingUI();
                 globalScreenStream = null; 
+                keepAlive.srcObject = null;
             };
+            
             startRecordingProcess();
         } catch (err) {
             console.error("Recording Start Failed:", err);
