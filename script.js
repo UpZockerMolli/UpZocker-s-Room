@@ -1115,6 +1115,8 @@ recBtn.onclick = handleRecordingToggle;
 // 2. Die zentrale Steuerungs-Funktion (auch für Hotkeys & Voice)
 async function handleRecordingToggle() {
     const recBtn = document.getElementById("recordBtn");
+    
+    // 1. Wenn Aufnahme läuft -> Stoppen
     if (recBtn && recBtn.classList.contains("recording")) {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop(); 
@@ -1122,19 +1124,7 @@ async function handleRecordingToggle() {
         return;
     }
 
-    // --- NEU: Keep-Alive Element (Verhindert das Einschlafen des Streams) ---
-    let keepAlive = document.getElementById("keepAliveRecVideo");
-    if (!keepAlive) {
-        keepAlive = document.createElement("video");
-        keepAlive.id = "keepAliveRecVideo";
-        // 1x1 Pixel, fast unsichtbar, ignoriert Klicks, aber "aktiv" für die Engine
-        keepAlive.style.cssText = "position:absolute; top:0; left:0; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-1;";
-        keepAlive.muted = true;
-        keepAlive.autoplay = true;
-        document.body.appendChild(keepAlive);
-    }
-
-    // --- Lebt der Stream noch? ---
+    // 2. Prüfen, ob wir noch einen aktiven Stream im Hintergrund haben
     let streamIsAlive = false;
     if (globalScreenStream && globalScreenStream.active) {
         const track = globalScreenStream.getVideoTracks()[0];
@@ -1143,28 +1133,29 @@ async function handleRecordingToggle() {
         }
     }
 
+    // 3. Starten
     if (streamIsAlive) {
         startRecordingProcess();
     } else {
         try {
+            // HIER WAR DER FEHLER: Wir nutzen wieder die simple, verlässliche Methode!
             globalScreenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: { mediaSource: "screen", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+                video: true, 
+                audio: true 
             });
             
-            // WICHTIG: Stream an das Video klemmen, damit er nicht stirbt!
-            keepAlive.srcObject = globalScreenStream;
-
+            // Wenn der Stream (z.B. vom User über "Teilen beenden") gestoppt wird
             globalScreenStream.getVideoTracks()[0].onended = () => { 
                 if(typeof resetRecordingUI === "function") resetRecordingUI();
                 globalScreenStream = null; 
-                keepAlive.srcObject = null;
             };
             
             startRecordingProcess();
+            
         } catch (err) {
             console.error("Recording Start Failed:", err);
-            if (err.name !== 'NotAllowedError') {
+            // Fehler anzeigen, außer der User hat einfach im Pop-up auf "Abbrechen" geklickt
+            if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
                 if(typeof showToast === "function") showToast("RECORDING FAILED: " + err.message, "error");
             }
         }
