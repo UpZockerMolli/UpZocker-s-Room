@@ -1064,7 +1064,16 @@ if (window.electronAPI) {
     const inviteBtn = document.getElementById("inviteBtn"); if (inviteBtn) inviteBtn.style.display = "none";
     document.querySelectorAll(".download-section").forEach(s => s.style.display = "none");
     document.querySelectorAll(".briefing-box").forEach(b => b.style.display = "none");
-    window.electronAPI.onHotkey((action) => { const targetBtn = document.getElementById(hotkeys[action].btn); if (targetBtn) targetBtn.click(); });
+    window.electronAPI.onHotkey((action) => { 
+    if (action === "rec" && typeof handleRecordingToggle === "function") {
+        // Direkter, sicherer Aufruf der Aufnahme-Funktion
+        handleRecordingToggle(); 
+    } else {
+        // Standard-Klick für alle anderen Hotkeys
+        const targetBtn = document.getElementById(hotkeys[action].btn); 
+        if (targetBtn) targetBtn.click(); 
+    }
+});
 }
 
 document.addEventListener("keydown", (e) => {
