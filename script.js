@@ -1,5 +1,25 @@
 const socket = io();
 
+// --- AUTO-RECONNECT LOGIK ---
+socket.on("connect", () => {
+    // Wenn 'myName' schon einen Wert hat, waren wir bereits eingeloggt = Ein Reconnect!
+    if (myName) {
+        const pass = document.getElementById("passwordInput").value;
+        
+        // 1. Wieder beim Server anmelden
+        socket.emit("login", { username: myName, password: pass });
+        
+        // 2. Kurz warten und uns wieder in unseren aktuellen Raum setzen
+        setTimeout(() => {
+            if (currentRoom && currentRoom !== "Lobby") {
+                socket.emit("join", { room: currentRoom });
+            }
+        }, 500);
+        
+        if(typeof showToast === "function") showToast("VERBINDUNG WIEDERHERGESTELLT", "info");
+    }
+});
+
 // --- GLOBAL VARIABLES ---
 let currentRoom = "Lobby";
 let myName = "";
@@ -649,7 +669,7 @@ shareBtn.onclick = async () => {
     } 
 };
 
-// --- FIX: PIP / POPOUT (NO DISTORTION / SMART CROP) ---
+// --- FIX: PIP / POPOUT (NO DISTORTION / SMART CROP + RAUM-TAG & SPIEGEL-FIX) ---
 let pipInterval = null;
 const popoutBtn = document.getElementById("popoutBtn");
 popoutBtn.onclick = async () => { 
@@ -694,36 +714,68 @@ popoutBtn.onclick = async () => {
                     const dx = (i % cols) * slotW;
                     const dy = Math.floor(i / cols) * slotH;
 
-                    // --- SMART CROP LOGIK (Object-Fit: Cover) ---
+                    // --- SMART CROP LOGIK ---
                     const vw = el.videoWidth;
                     const vh = el.videoHeight;
-                    
                     const imgRatio = vw / vh;
                     const slotRatio = slotW / slotH;
 
                     let sx, sy, sWidth, sHeight;
 
                     if (imgRatio > slotRatio) {
-                        // Bild ist breiter als der Slot -> Seiten abschneiden
                         sHeight = vh;
                         sWidth = vh * slotRatio;
                         sy = 0;
                         sx = (vw - sWidth) / 2;
                     } else {
-                        // Bild ist höher als der Slot -> Oben/Unten abschneiden
                         sWidth = vw;
                         sHeight = vw / slotRatio;
                         sx = 0;
                         sy = (vh - sHeight) / 2;
                     }
 
-                    // Zeichnen mit Crop
-                    ctx.drawImage(el, sx, sy, sWidth, sHeight, dx, dy, slotW, slotH);
+                    // --- NEU: EIGENES VIDEO SPIEGELN ---
+                    // Wir prüfen, ob es sich um dein lokales Video handelt
+                    const isLocal = el.parentElement && el.parentElement.id === "v-local";
+
+                    if (isLocal) {
+                        ctx.save();
+                        // Zum Startpunkt des Videos springen, spiegeln und zurückspringen
+                        ctx.translate(dx + slotW, dy);
+                        ctx.scale(-1, 1);
+                        ctx.drawImage(el, sx, sy, sWidth, sHeight, 0, 0, slotW, slotH);
+                        ctx.restore();
+                    } else {
+                        // Normale Videos von anderen ungespiegelt zeichnen
+                        ctx.drawImage(el, sx, sy, sWidth, sHeight, dx, dy, slotW, slotH);
+                    }
 
                 } catch(err) {
                     // Falls Video kurzzeitig nicht verfügbar ist
                 } 
             }); 
+            
+            // --- NEU: RAUM-TAG EINZEICHNEN ---
+            if (currentRoom) {
+                const roomText = `SEKTOR: ${currentRoom.toUpperCase()}`;
+                ctx.font = "bold 20px monospace";
+                const textWidth = ctx.measureText(roomText).width;
+                
+                // Halbtransparenter Hintergrund
+                ctx.fillStyle = "rgba(5, 7, 13, 0.7)";
+                ctx.fillRect(20, 20, textWidth + 30, 40);
+                
+                // Rahmenlinie in Neon-Cyan
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#00f5ff";
+                ctx.strokeRect(20, 20, textWidth + 30, 40);
+                
+                // Text in Neon-Cyan
+                ctx.fillStyle = "#00f5ff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(roomText, 20 + (textWidth + 30) / 2, 40);
+            }
         }
     }, 33);
     
@@ -1185,14 +1237,12 @@ async function handleRecordingToggle(isFromHotkey = false) {
     }
 
     if (streamIsAlive) {
+        // Stream läuft schon (z.B. vom vorherigen Mal) -> Direkt starten!
         startRecordingProcess();
     } else {
-        // RADAR: Wenn Chromium den Stream blockiert, weil du im Hintergrund bist
-        if (isFromHotkey === true) {
-            if(typeof showToast === "function") showToast("🚨 SYSTEM: Bitte Aufnahme erst 1x manuell anklicken (Scharfschalten)!", "error");
-            return;
-        }
-
+        // --- NEU: KEIN SCHARFSCHALTEN MEHR! ---
+        // Wir holen uns den Stream jetzt einfach immer direkt, egal woher der Befehl kam!
+        
         if (globalScreenStream) {
             globalScreenStream.getTracks().forEach(t => t.stop());
             globalScreenStream = null;
@@ -1200,6 +1250,7 @@ async function handleRecordingToggle(isFromHotkey = false) {
 
         try {
             try {
+                // Hole den Desktop-Stream (inklusive Audio)
                 globalScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             } catch (audioErr) {
                 console.warn("System-Audio blockiert, versuche Fallback (Nur Video)...", audioErr);
@@ -1207,16 +1258,18 @@ async function handleRecordingToggle(isFromHotkey = false) {
                 if(typeof showToast === "function") showToast("INFO: System-Audio blockiert, nutze nur Mikrofon.", "error");
             }
             
+            // Wenn der Stream beendet wird (z.B. Stop-Freigabe-Button in Windows)
             globalScreenStream.getVideoTracks()[0].onended = () => { 
                 resetRecordingUI();
                 globalScreenStream = null; 
             };
             
+            // --- NEU: SOFORTIGER START NACH ERLAUBNIS ---
+            // Sobald wir den Stream haben, startet die Aufnahme direkt, OHNE zweiten Klick!
             startRecordingProcess();
             
         } catch (err) {
             console.error("Recording Start Failed:", err);
-            // Wir blenden Fehler nicht mehr aus, sondern zeigen sie dir klar an!
             if (err.name === 'NotAllowedError') {
                 if(typeof showToast === "function") showToast("ZUGRIFF VERWEIGERT: Berechtigung fehlt.", "error");
             } else if (err.name !== 'AbortError') {
